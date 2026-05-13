@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence, Variants } from 'framer-motion'; // <-- Imported Variants
+import { motion, AnimatePresence } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 // --- CONFIGURATION ---
@@ -18,8 +18,8 @@ const ProfileDashboard = () => {
   const [activeTab, setActiveTab] = useState('analytics');
   const [isEditing, setIsEditing] = useState(false);
 
-  // Parent Stagger logic - explicitly typed as Variants
-  const pageVariants: Variants = {
+  // Animation Variants
+  const pageVariants = {
     initial: { opacity: 0, y: 15 },
     animate: { 
       opacity: 1, 
@@ -29,8 +29,7 @@ const ProfileDashboard = () => {
     exit: { opacity: 0, y: -15, transition: { duration: 0.2 } }
   };
 
-  // Explicitly typed as Variants
-  const itemVariants: Variants = {
+  const itemVariants = {
     initial: { opacity: 0, scale: 0.95, y: 10 },
     animate: { opacity: 1, scale: 1, y: 0 }
   };
@@ -63,14 +62,14 @@ const ProfileDashboard = () => {
           title="Logout"
         >
           <svg className="w-6 h-6 text-slate-400 group-hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013-3v1" />
           </svg>
         </motion.button>
       </header>
 
       <main className="max-w-7xl mx-auto px-10 pb-20">
         
-        {/* 2. ANIMATED BACK BUTTON */}
+        {/* 2. BACK BUTTON */}
         <div className="pt-18 pb-6">
           <motion.button 
             initial={{ opacity: 0, x: -10 }}
@@ -96,9 +95,9 @@ const ProfileDashboard = () => {
           <div className="flex items-center gap-8 z-10">
             <motion.div whileHover={{ rotate: 5, scale: 1.05 }} className="w-28 h-28 bg-[#D9D9D9] rounded-full border-4 border-white/20 shadow-lg" />
             <div className="space-y-1">
-              <h1 className="text-4xl font-bold">Juan Dela Cruz</h1>
+              <h1 className="text-4xl font-bold tracking-tight">Juan Dela Cruz</h1>
               <div className="flex items-center gap-2 opacity-80">
-                <img src="/images/sms.png" className="w-4 h-4 brightness-200" alt="Email" />
+                <img src="/images/sms.png" className="w-4 h-4 brightness-200" alt="Email icon" />
                 <p className="text-sm font-medium">juandelacruz@gmail.com</p>
               </div>
             </div>
@@ -147,16 +146,7 @@ const ProfileDashboard = () => {
                   </div>
                 </motion.div>
               </div>
-
-              <motion.div variants={itemVariants} className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
-                <h3 className="font-bold text-sm text-slate-700 mb-8">Recent Activity</h3>
-                <div className="space-y-6">
-                  <ActivityItem title="Completed: Introduction to Psychology.pdf" time="2 hours ago" icon="grid-03.png" />
-                  <ActivityItem title="Exam Booster: Data Structures Lecture" time="5 hours ago" icon="star-01.png" />
-                  <ActivityItem title="Uploaded: Research Methods Notes.docx" time="1 day ago" icon="clock-fast-forward.png" />
-                  <ActivityItem title="Completed: Statistics Chapter 3" time="2 days ago" icon="grid-03.png" />
-                </div>
-              </motion.div>
+              {/* Recent Activity Section Removed */}
             </motion.div>
           ) : (
             <motion.div key="settings" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="bg-white rounded-3xl p-12 shadow-sm border border-gray-100">
@@ -165,9 +155,9 @@ const ProfileDashboard = () => {
                 {!isEditing && (
                   <motion.button 
                     variants={itemVariants} whileTap={{ scale: 0.95 }} onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#F9FAFB] border border-gray-100 rounded-xl text-[12px] font-bold text-slate-600 hover:bg-[#F5A623] hover:text-[#1A1D23] transition-all"
+                    className="flex items-center gap-2 px-4 py-2 bg-[#F9FAFB] border border-gray-100 rounded-xl text-[12px] font-bold text-slate-600 hover:bg-[#F5A623] hover:text-[#1A1D23] transition-all group"
                   >
-                    <img src="/images/mdi_pencil.png" className="w-4 h-4 opacity-70" alt="edit" /> Edit
+                    <img src="/images/mdi_pencil.png" className="w-4 h-4 opacity-70 group-hover:opacity-100" alt="pencil icon" /> Edit
                   </motion.button>
                 )}
               </div>
@@ -195,7 +185,7 @@ const ProfileDashboard = () => {
   );
 };
 
-/* --- REUSABLE COMPONENTS --- */
+/* --- HELPER COMPONENTS --- */
 
 const TabButton = ({ active, onClick, label }: any) => (
   <button 
@@ -209,7 +199,7 @@ const TabButton = ({ active, onClick, label }: any) => (
 const StatCard = ({ label, value, trend, icon, variants }: any) => (
   <motion.div variants={variants} whileHover={{ y: -5 }} className="bg-white p-7 rounded-2xl border border-gray-100 shadow-sm cursor-default">
     <div className="flex justify-between items-start mb-5">
-      <div className="p-3 bg-gray-50 rounded-xl"><img src={`/images/${icon}`} className="w-6 h-6 opacity-70" alt="icon" /></div>
+      <div className="p-3 bg-gray-50 rounded-xl"><img src={`/images/${icon}`} className="w-6 h-6 opacity-70" alt="card icon" /></div>
       <span className="text-[11px] font-bold text-green-500 bg-green-50 px-2 py-0.5 rounded-full">{trend}</span>
     </div>
     <h3 className="text-2xl font-bold tracking-tight">{value}</h3>
@@ -220,23 +210,11 @@ const StatCard = ({ label, value, trend, icon, variants }: any) => (
 const AchievementCard = ({ title, desc, icon, active = false }: any) => (
   <div className={`flex items-center gap-4 p-4 rounded-xl transition-all ${active ? 'bg-[#F4F5F7] border-2 border-[#1A1D23]' : 'bg-white border border-gray-100 opacity-60'}`}>
     <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${active ? 'bg-[#E5E7EB]' : 'bg-gray-50'}`}>
-      <img src={`/images/${icon}`} className="w-5 h-5" alt="icon" />
+      <img src={`/images/${icon}`} className="w-5 h-5" alt="achievement icon" />
     </div>
     <div className="text-left">
       <p className={`text-sm font-bold ${active ? 'text-[#1A1D23]' : 'text-gray-400'}`}>{title}</p>
       <p className="text-[11px] text-gray-400 leading-tight">{desc}</p>
-    </div>
-  </div>
-);
-
-const ActivityItem = ({ title, time, icon }: any) => (
-  <div className="flex items-center gap-4 group cursor-pointer">
-    <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center transition-colors group-hover:bg-orange-50">
-      <img src={`/images/${icon}`} className="w-4 h-4 opacity-40 group-hover:opacity-100 transition-opacity" alt="icon" />
-    </div>
-    <div className="text-left">
-      <p className="text-sm font-bold text-slate-700 group-hover:text-[#F5A623] transition-colors">{title}</p>
-      <p className="text-[11px] text-slate-400">{time}</p>
     </div>
   </div>
 );
