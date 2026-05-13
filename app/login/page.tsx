@@ -86,7 +86,7 @@ const LoginPage: React.FC = () => {
       <section className="relative hidden w-1/2 overflow-hidden md:block">
 
         <img 
-        src="login-bg.png" 
+        src="/images/login-bg.png" 
         alt="Student studying" 
         className="absolute inset-0 h-full w-full object-cover z-0"
         />
@@ -98,11 +98,10 @@ const LoginPage: React.FC = () => {
         className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none"
         />
         
-        <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" 
-            style={{ backgroundImage: 'radial-gradient(circle, #ffffff22 1px, transparent 1px)', backgroundSize: '40px 40px' }}/>
+       <div className="absolute inset-0 z-10 bg-black/10 backdrop-blur-[1px]" style={{ backgroundImage: 'radial-gradient(circle, #ffffff22 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
-        <div className="absolute inset z-20 flex flex-col justify-end p-18 text-white bg-gradient-to-t from-black/60 via-transparent to-transparent ">
-                <motion.img 
+        <div className="absolute inset-0 z-20 flex flex-col justify-end p-16 text-white">
+            <motion.img 
                 src="/images/sparkles.png" 
                 alt="Sparkle"
                 className="w-16 h-16 mb-6 object-contain origin-center"
@@ -115,13 +114,14 @@ const LoginPage: React.FC = () => {
                     repeat: Infinity, 
                     ease: "easeInOut" 
                 }}
-                />
+            />
 
-                <motion.div
+            <motion.div
                 initial={{ opacity: 0, x: 40 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}
-                className="max-w-2xl">
+                className="max-w-2xl"
+            >
                 <h2 className="mb-6 text-5xl font-semibold leading-tight tracking-tighter">
                     Start fine-tuning your focus.
                 </h2>
@@ -131,10 +131,10 @@ const LoginPage: React.FC = () => {
             </motion.div>
 
             <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.7 }}
-            className="flex items-center gap-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.7 }}
+                className="flex items-center gap-4"
             >
                 <div className="flex -space-x-3 hover-group">
                     {avatarUrls.map((imgSrc, index) => (
