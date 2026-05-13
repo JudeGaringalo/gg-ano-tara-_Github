@@ -73,6 +73,7 @@ export default function LandingPage() {
       src="/images/logo.png" 
       alt="Echo Logo" 
       className="w-full h-auto object-contain"
+      style={{ filter: 'invert(18%) sepia(88%) saturate(4535%) hue-rotate(262deg) brightness(82%) contrast(92%)' }}
     />
   </motion.div>
 
@@ -350,30 +351,60 @@ export default function LandingPage() {
 
       {/* --- MEET THE DEVELOPERS SECTION --- */}
       <section id="developers" className="relative z-10 max-w-7xl mx-auto px-8 pb-32">
-        <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">Meet the Developers</h2>
+        <motion.h2 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="text-3xl font-bold text-gray-900 text-center mb-12"
+        >
+          Meet the Developers
+        </motion.h2>
 
         {/* First Row */}
         <motion.div 
           variants={staggerContainer}
           initial="initial"
           whileInView="whileInView"
-          className="flex flex-wrap justify-center gap-6 mb-8"
+          className="flex flex-wrap justify-center gap-8 mb-16"
         >
           {firstRow.map((dev) => (
             <motion.div 
               key={dev.id} 
               variants={fadeInUp}
-              className="bg-[#f0f2f5] rounded-xl p-6 flex flex-col items-center w-full sm:w-[240px] transition-shadow hover:shadow-lg"
+              // ADDED: Hover animation for the entire card
+              whileHover={{ y: -5 }}
+              className="flex flex-col w-full sm:w-[200px] cursor-pointer"
             >
-              <div className="w-full aspect-square bg-[#d9dde3] rounded-lg overflow-hidden mb-6 flex items-center justify-center relative">
+              {/* Image Container with rounded-lg corners */}
+              <motion.div 
+                // ADDED: Hover animation for the image specifically
+                whileHover={{ scale: 1.03 }}
+                transition={{ duration: 0.3 }}
+                className="w-full aspect-[3/4] overflow-hidden relative mb-4 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+              >
                 <img 
                   src={dev.img} 
                   alt={dev.name} 
                   className="w-full h-full object-cover" 
                 />
+                {/* Gradient Overlay */}
+                <div 
+                  className="absolute inset-0 flex flex-col justify-end p-4"
+                  style={{ background: 'linear-gradient(to top, rgba(88, 29, 198, 0.6) 0%, rgba(88, 29, 198, 0) 40%)' }}
+                >
+                  <h4 className="font-bold text-white text-xl leading-[1.1] uppercase tracking-tighter">
+                    {dev.name.split(' ').map((part, i) => (
+                      <span key={i} className="block">{part}</span>
+                    ))}
+                  </h4>
+                </div>
+              </motion.div>
+              
+              <div className="text-left px-1">
+                <p className="text-[#581DC6] text-[10px] font-bold uppercase tracking-widest mb-1">
+                  {dev.role}
+                </p>
               </div>
-              <h4 className="font-bold text-gray-900 text-xl mb-1">{dev.name}</h4>
-              <p className="text-gray-500 text-sm uppercase tracking-wide">{dev.role}</p>
             </motion.div>
           ))}
         </motion.div>
@@ -383,23 +414,42 @@ export default function LandingPage() {
           variants={staggerContainer}
           initial="initial"
           whileInView="whileInView"
-          className="flex flex-wrap justify-center gap-6"
+          className="flex flex-wrap justify-center gap-8"
         >
           {secondRow.map((dev) => (
             <motion.div 
               key={dev.id} 
               variants={fadeInUp}
-              className="bg-[#f0f2f5] rounded-xl p-6 flex flex-col items-center w-full sm:w-[240px] transition-shadow hover:shadow-lg"
+              whileHover={{ y: -5 }}
+              className="flex flex-col w-full sm:w-[200px] cursor-pointer"
             >
-              <div className="w-full aspect-square bg-[#d9dde3] rounded-lg overflow-hidden mb-6 flex items-center justify-center relative">
+              <motion.div 
+                whileHover={{ scale: 1.03 }}
+                transition={{ duration: 0.3 }}
+                className="w-full aspect-[3/4] overflow-hidden relative mb-4 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+              >
                 <img 
                   src={dev.img} 
                   alt={dev.name} 
                   className="w-full h-full object-cover" 
                 />
+                <div 
+                  className="absolute inset-0 flex flex-col justify-end p-4"
+                  style={{ background: 'linear-gradient(to top, rgba(88, 29, 198, 0.6) 0%, rgba(88, 29, 198, 0) 40%)' }}
+                >
+                  <h4 className="font-bold text-white text-xl leading-[1.1] uppercase tracking-tighter">
+                    {dev.name.split(' ').map((part, i) => (
+                      <span key={i} className="block">{part}</span>
+                    ))}
+                  </h4>
+                </div>
+              </motion.div>
+              
+              <div className="text-left px-1">
+                <p className="text-[#581DC6] text-[10px] font-bold uppercase tracking-widest mb-1">
+                  {dev.role}
+                </p>
               </div>
-              <h4 className="font-bold text-gray-900 text-xl mb-1">{dev.name}</h4>
-              <p className="text-gray-500 text-sm uppercase tracking-wide">{dev.role}</p>
             </motion.div>
           ))}
         </motion.div>
