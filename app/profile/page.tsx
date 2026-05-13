@@ -35,8 +35,8 @@ const ProfileDashboard = () => {
   return (
     <div className="min-h-screen bg-[#F9FAFB] text-[#1A1D23] font-sans overflow-x-hidden">
       
-      {/* 1. ANIMATED HEADER */}
-      <header className="w-full bg-white border-b border-gray-100 px-16 py-8 sticky top-0 z-50 flex items-center justify-between h-24">
+      {/* 1. RESPONSIVE HEADER */}
+      <header className="w-full bg-white border-b border-gray-100 px-6 md:px-16 py-4 md:py-8 sticky top-0 z-50 flex items-center justify-between h-20 md:h-24">
         <motion.div 
           initial={{ opacity: 0, x: -20 }} 
           animate={{ opacity: 1, x: 0 }}
@@ -45,7 +45,7 @@ const ProfileDashboard = () => {
           <img 
             src="/images/logo.png" 
             alt="Echo Logo" 
-            className="h-14 w-auto object-contain cursor-pointer" 
+            className="h-10 md:h-14 w-auto object-contain cursor-pointer" 
             style={{ filter: 'invert(18%) sepia(88%) saturate(4535%) hue-rotate(262deg) brightness(82%) contrast(92%)' }}
           />
         </motion.div>
@@ -56,7 +56,7 @@ const ProfileDashboard = () => {
           transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
           whileHover={{ scale: 1.1, backgroundColor: '#FEF2F2' }}
           whileTap={{ scale: 0.9 }}
-          className="p-3 rounded-xl transition-colors group"
+          className="p-2 md:p-3 rounded-xl transition-colors group"
           title="Logout"
         >
           <svg className="w-6 h-6 text-slate-400 group-hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,10 +65,10 @@ const ProfileDashboard = () => {
         </motion.button>
       </header>
 
-      <main className="max-w-7xl mx-auto px-10 pb-20">
+      <main className="max-w-7xl mx-auto px-6 md:px-10 pb-20">
         
         {/* 2. BACK BUTTON */}
-        <div className="pt-18 pb-6">
+        <div className="pt-10 md:pt-18 pb-6">
           <motion.button 
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
@@ -83,25 +83,25 @@ const ProfileDashboard = () => {
           </motion.button>
         </div>
 
-        {/* 3. HERO CARD */}
+        {/* 3. RESPONSIVE HERO CARD */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ delay: 0.4, duration: 0.5 }}
-          className="bg-[#631DC3] rounded-3xl p-12 mb-10 text-white shadow-xl flex items-center relative overflow-hidden"
+          className="bg-[#631DC3] rounded-3xl p-8 md:p-12 mb-10 text-white shadow-xl flex flex-col md:flex-row items-center md:items-center justify-between relative overflow-hidden"
         >
-          <div className="flex items-center gap-8 z-10">
-            <motion.div whileHover={{ rotate: 5, scale: 1.05 }} className="w-28 h-28 bg-[#D9D9D9] rounded-full border-4 border-white/20 shadow-lg" />
+          <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8 z-10 text-center md:text-left">
+            <motion.div whileHover={{ rotate: 5, scale: 1.05 }} className="w-24 h-24 md:w-28 md:h-28 bg-[#D9D9D9] rounded-full border-4 border-white/20 shadow-lg" />
             <div className="space-y-1">
-              <h1 className="text-4xl font-bold tracking-tight">Juan Dela Cruz</h1>
-              <div className="flex items-center gap-2 opacity-80">
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Juan Dela Cruz</h1>
+              <div className="flex items-center justify-center md:justify-start gap-2 opacity-80">
                 <img src="/images/sms.png" className="w-4 h-4 brightness-200" alt="Email icon" />
                 <p className="text-sm font-medium">juandelacruz@gmail.com</p>
               </div>
             </div>
           </div>
 
-          <div className="absolute right-12 flex gap-3 z-10">
+          <div className="flex gap-3 z-10 mt-8 md:mt-0 w-full md:w-auto justify-center">
             <TabButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} label="Edit Profile" />
             <TabButton active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} label="View Analytics" />
           </div>
@@ -112,7 +112,7 @@ const ProfileDashboard = () => {
           {activeTab === 'analytics' ? (
             <motion.div key="analytics" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-10">
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <StatCard variants={itemVariants} label="Total Study Time" value="127.5 hrs" trend="+12%" icon="clock-fast-forward.png" />
                 <StatCard variants={itemVariants} label="Documents Processed" value="48" trend="+8" icon="grid-03.png" />
                 <StatCard variants={itemVariants} label="Avg Retention Rate" value="82%" trend="+5%" icon="chart-breakout-square.png" />
@@ -120,12 +120,12 @@ const ProfileDashboard = () => {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <motion.div variants={itemVariants} className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm flex flex-col h-[400px]">
+                <motion.div variants={itemVariants} className="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm flex flex-col h-[350px] md:h-[400px]">
                   <h3 className="font-bold text-sm text-slate-700 mb-4">Document Types</h3>
                   <div className="flex-grow">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie data={chartData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" stroke="none">
+                        <Pie data={chartData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">
                           {chartData.map((_, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
                         </Pie>
                         <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 30px rgba(0,0,0,0.05)' }} />
@@ -134,9 +134,9 @@ const ProfileDashboard = () => {
                   </div>
                 </motion.div>
 
-                <motion.div variants={itemVariants} className="lg:col-span-2 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+                <motion.div variants={itemVariants} className="lg:col-span-2 bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm">
                   <h3 className="font-bold text-base text-slate-800 mb-6">Achievements</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <AchievementCard title="7-Day Streak" desc="Studied for 7 consecutive days" icon="star-01.png" active />
                     <AchievementCard title="High Retention" desc="Achieved 90% retention rate" icon="chart-breakout-square.png" active />
                     <AchievementCard title="Study Master" desc="Completed 50+ documents" icon="grid-03.png" active={false} />
@@ -144,11 +144,10 @@ const ProfileDashboard = () => {
                   </div>
                 </motion.div>
               </div>
-              {/* Recent Activity Section Removed */}
             </motion.div>
           ) : (
-            <motion.div key="settings" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="bg-white rounded-3xl p-12 shadow-sm border border-gray-100">
-              <div className="flex justify-between items-center mb-10">
+            <motion.div key="settings" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-gray-100">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
                 <motion.h2 variants={itemVariants} className="text-xl font-bold">Personal Information</motion.h2>
                 {!isEditing && (
                   <motion.button 
@@ -160,7 +159,7 @@ const ProfileDashboard = () => {
                 )}
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 md:gap-y-8">
                 <motion.div variants={itemVariants}><InputBlock label="Full Name" placeholder="Juan Dela Cruz" disabled={!isEditing} /></motion.div>
                 <motion.div variants={itemVariants}><InputBlock label="Nick Name" placeholder="Juan" disabled={!isEditing} /></motion.div>
                 <motion.div variants={itemVariants}><SelectBlock label="Gender" options={['Male', 'Female', 'Other']} disabled={!isEditing} /></motion.div>
@@ -169,9 +168,9 @@ const ProfileDashboard = () => {
 
               <AnimatePresence>
                 {isEditing && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-12 pt-8 border-t border-gray-50 flex justify-end gap-4">
-                    <button onClick={() => setIsEditing(false)} className="px-6 py-2 text-slate-400 font-bold hover:text-red-500 transition-colors">Cancel</button>
-                    <button onClick={() => setIsEditing(false)} className="px-8 py-2.5 bg-[#F5A623] text-[#1A1D23] rounded-xl font-bold shadow-lg shadow-orange-500/10 hover:brightness-110 transition-all">Save Changes</button>
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-12 pt-8 border-t border-gray-50 flex flex-col sm:flex-row justify-end gap-4">
+                    <button onClick={() => setIsEditing(false)} className="px-6 py-2 text-slate-400 font-bold hover:text-red-500 transition-colors w-full sm:w-auto">Cancel</button>
+                    <button onClick={() => setIsEditing(false)} className="px-8 py-2.5 bg-[#F5A623] text-[#1A1D23] rounded-xl font-bold shadow-lg shadow-orange-500/10 hover:brightness-110 transition-all w-full sm:w-auto">Save Changes</button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -188,19 +187,19 @@ const ProfileDashboard = () => {
 const TabButton = ({ active, onClick, label }: any) => (
   <button 
     onClick={onClick} 
-    className={`px-6 py-2 rounded-xl text-sm font-bold transition-all duration-300 ${active ? 'bg-[#F5A623] text-[#1A1D23] shadow-lg shadow-orange-500/20 scale-105' : 'bg-white/10 text-white hover:bg-[#F5A623] hover:text-[#1A1D23]'}`}
+    className={`px-4 md:px-6 py-2 rounded-xl text-xs md:text-sm font-bold transition-all duration-300 ${active ? 'bg-[#F5A623] text-[#1A1D23] shadow-lg shadow-orange-500/20 scale-105' : 'bg-white/10 text-white hover:bg-[#F5A623] hover:text-[#1A1D23]'}`}
   >
     {label}
   </button>
 );
 
 const StatCard = ({ label, value, trend, icon, variants }: any) => (
-  <motion.div variants={variants} whileHover={{ y: -5 }} className="bg-white p-7 rounded-2xl border border-gray-100 shadow-sm cursor-default">
+  <motion.div variants={variants} whileHover={{ y: -5 }} className="bg-white p-6 md:p-7 rounded-2xl border border-gray-100 shadow-sm cursor-default">
     <div className="flex justify-between items-start mb-5">
       <div className="p-3 bg-gray-50 rounded-xl"><img src={`/images/${icon}`} className="w-6 h-6 opacity-70" alt="card icon" /></div>
       <span className="text-[11px] font-bold text-green-500 bg-green-50 px-2 py-0.5 rounded-full">{trend}</span>
     </div>
-    <h3 className="text-2xl font-bold tracking-tight">{value}</h3>
+    <h3 className="text-xl md:text-2xl font-bold tracking-tight">{value}</h3>
     <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">{label}</p>
   </motion.div>
 );

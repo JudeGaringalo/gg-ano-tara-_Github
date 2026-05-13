@@ -30,14 +30,9 @@ const staggerContainer = {
 };
 
 export default function LandingPage() {
-  /** 
-   * FIX: Adding <HTMLVideoElement> tells TypeScript exactly what this ref is.
-   * This removes the red squiggly lines from .play() and .pause() methods.
-   */
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // --- FIXED TOGGLE PLAY LOGIC ---
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -57,7 +52,6 @@ export default function LandingPage() {
     }
   };
 
-  // Splits the data into two rows
   const firstRow = TEAM_MEMBERS.slice(0, 4);
   const secondRow = TEAM_MEMBERS.slice(4, 7);
 
@@ -67,38 +61,49 @@ export default function LandingPage() {
       <div className="absolute inset-0 z-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px] opacity-50"></div>
 
       {/* --- NAVBAR --- */}
-      <nav className="relative z-50 flex items-center justify-between px-8 py-5 max-w-7xl mx-auto bg-white/80 backdrop-blur-md">
-        {/* Logo */}
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="flex items-center w-24 h-auto"
+<nav className="relative z-50 flex items-center justify-between px-8 py-5 max-w-7xl mx-auto bg-white/80 backdrop-blur-md">
+  {/* Logo */}
+  <motion.div 
+    initial={{ opacity: 0, x: -20 }}
+    animate={{ opacity: 1, x: 0 }}
+    transition={{ duration: 0.6 }}
+    className="flex items-center w-24 h-auto"
+  >
+    <img 
+      src="/images/logo.png" 
+      alt="Echo Logo" 
+      className="w-full h-auto object-contain"
+    />
+  </motion.div>
+
+      {/* Navigation Links - Now with entry animation */}
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.2 }}
+        className="hidden md:flex items-center gap-12 text-sm font-medium text-gray-600"
+      >
+        <Link href="#features" className="hover:text-[#5A22C3] transition">Features</Link>
+        <Link href="#developers" className="hover:text-[#5A22C3] transition">Developers</Link>
+        <Link href="#about-us" className="hover:text-[#5A22C3] transition">About Us</Link>
+      </motion.div>
+
+      {/* Action Button - Now with entry animation */}
+      <motion.div 
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, delay: 0.4 }}
+        className="flex items-center"
+      >
+        <motion.button 
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="px-6 py-2 bg-[#5A22C3] text-white rounded-lg hover:bg-[#4a1ca3] transition shadow-md font-medium"
         >
-          <img 
-            src="/images/logo.png" 
-            alt="Echo Logo" 
-            className="w-full h-auto object-contain"
-          />
-        </motion.div>
-
-        {/* Navigation Links */}
-        <div className="hidden md:flex items-center gap-12 text-sm font-medium text-gray-600">
-          <Link href="#features" className="hover:text-[#5A22C3] transition">Features</Link>
-          <Link href="#developers" className="hover:text-[#5A22C3] transition">Developers</Link>
-          <Link href="#about-us" className="hover:text-[#5A22C3] transition">About Us</Link>
-        </div>
-
-        {/* Action Button */}
-        <div className="flex items-center">
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-6 py-2 bg-[#5A22C3] text-white rounded-lg hover:bg-[#4a1ca3] transition shadow-md font-medium"
-          >
-            Get started
-          </motion.button>
-        </div>
-      </nav>
+          Get started
+        </motion.button>
+      </motion.div>
+    </nav>
 
       {/* --- HERO SECTION --- */}
       <main className="relative z-10 max-w-7xl mx-auto px-8 pt-20 pb-24 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -136,8 +141,26 @@ export default function LandingPage() {
         <div className="relative w-full flex justify-center lg:justify-end">
           {/* --- ARROW OVERLAPPING PICTURE --- */}
           <motion.div 
-            animate={{ y: [0, -12, 0] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            // 1. Start hidden and slightly lower (matching your fadeInUp style)
+            initial={{ opacity: 0, y: 20 }}
+            // 2. Animate to full opacity and start the floating sequence
+            animate={{ 
+              opacity: 1, 
+              y: [0, -12, 0] 
+            }}
+            // 3. Define how the entry and loop behave
+            transition={{ 
+              // The fade-in happens once
+              opacity: { duration: 0.8, ease: "easeOut" },
+              // The Y-axis loop repeats infinitely
+              y: { 
+                duration: 4, 
+                repeat: Infinity, 
+                ease: "easeInOut",
+                // Delay the loop slightly so the "ease in" finishes first
+                delay: 0.8 
+              } 
+            }}
             className="absolute left-[-35px] bottom-16 w-48 h-48 z-30 pointer-events-none"
           >
             <img 
@@ -147,13 +170,13 @@ export default function LandingPage() {
             />
           </motion.div>
 
-          {/* --- VIDEO CONTAINER --- */}
+          {/* --- VIDEO CONTAINER (Borders/Shadow Removed) --- */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8 }}
             onClick={togglePlay}
-            className="relative w-full max-w-[500px] aspect-[4/5] border border-gray-200 rounded-sm shadow-xl overflow-hidden flex items-center justify-center z-10 cursor-pointer group"
+            className="relative w-full max-w-[500px] aspect-[4/5] rounded-sm overflow-hidden flex items-center justify-center z-10 cursor-pointer group"
           >
             <video 
               ref={videoRef}
@@ -222,12 +245,13 @@ export default function LandingPage() {
           </ul>
         </motion.div>
 
+        {/* --- IMAGE CONTAINER (Shadow Removed) --- */}
         <motion.div 
           initial={{ opacity: 0, x: 30 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="relative rounded-2xl overflow-hidden shadow-lg"
+          className="relative rounded-2xl overflow-hidden"
         >
           <img src="/images/landing 2.png" alt="Exam Mode" className="w-full h-auto object-cover" />
         </motion.div>
@@ -235,12 +259,13 @@ export default function LandingPage() {
       
       {/* --- INSTANT AUDIO CONVERSION / SKIM-SYNC --- */}
       <section id="skim-sync" className="relative z-10 max-w-7xl mx-auto px-8 py-24 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        {/* --- IMAGE CONTAINER (Shadow Removed) --- */}
         <motion.div 
           initial={{ opacity: 0, x: -30 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="relative rounded-2xl overflow-hidden shadow-lg"
+          className="relative rounded-2xl overflow-hidden"
         >
           <img src="/images/landing 3.png" alt="Skim-Sync" className="w-full h-auto object-cover" />
         </motion.div>
@@ -303,12 +328,13 @@ export default function LandingPage() {
           </ul>
         </motion.div>
 
+        {/* --- IMAGE CONTAINER (Shadow Removed) --- */}
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="relative rounded-2xl overflow-hidden shadow-lg"
+          className="relative rounded-2xl overflow-hidden"
         >
           <img src="/images/landing 4.png" alt="Progress Tracking" className="w-full h-auto object-cover" />
         </motion.div>
