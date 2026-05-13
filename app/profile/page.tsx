@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
-const COLORS = ['#0085FF', '#00C292', '#FFA500', '#631DC3'];
+const COLORS = ['#0085FF', '#00C292', '#F5A623', '#631DC3'];
 
 const chartData = [
   { name: 'PDFs', value: 45 },
@@ -45,26 +45,30 @@ const ProfileDashboard = () => {
 
         <nav className="hidden lg:flex items-center gap-10">
           {['Exam Mood Booster', 'Active Recall', 'Document Merger', 'Skim-Sync', 'Burnout Detection'].map((item) => (
-            <button key={item} className="text-[13px] font-semibold text-slate-600 hover:text-[#631DC3] transition-colors">{item}</button>
+            <button key={item} className="text-[13px] font-semibold text-slate-600 hover:text-[#F5A623] transition-colors">{item}</button>
           ))}
         </nav>
 
         <div className="flex items-center justify-end gap-8 flex-1">
           <button className="flex items-center gap-2 group cursor-pointer">
             <img src="/images/user-square.png" className="w-5 h-5 opacity-70" alt="Profile" />
-            <span className="text-[14px] font-semibold text-slate-600">Profile</span>
+            <span className="text-[14px] font-semibold text-slate-600 group-hover:text-[#F5A623] transition-colors">Profile</span>
           </button>
           <button className="flex items-center gap-2 group cursor-pointer">
             <img src="/images/logout.png" className="w-5 h-5 opacity-50" alt="Logout" />
-            <span className="text-[14px] font-semibold text-slate-500">Logout</span>
+            <span className="text-[14px] font-semibold text-slate-500 group-hover:text-red-500 transition-colors">Logout</span>
           </button>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto p-10">
         
-        {/* HERO CARD */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-r from-[#631DC3] via-[#7B42D9] to-[#A3B4D5] rounded-3xl p-12 mb-10 text-white shadow-xl flex items-center relative overflow-hidden">
+        {/* SOLID COLOR HERO CARD */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          className="bg-[#631DC3] rounded-3xl p-12 mb-10 text-white shadow-xl flex items-center relative overflow-hidden"
+        >
           <div className="flex items-center gap-8 z-10">
             <div className="w-28 h-28 bg-[#D9D9D9] rounded-full border-4 border-white/20 shadow-lg" />
             <div className="space-y-1">
@@ -77,8 +81,18 @@ const ProfileDashboard = () => {
           </div>
 
           <div className="absolute right-12 flex gap-3 z-10">
-            <button onClick={() => setActiveTab('settings')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'settings' ? 'bg-white text-[#631DC3]' : 'bg-white/20 text-white hover:bg-white/30'}`}>Edit Profile</button>
-            <button onClick={() => setActiveTab('analytics')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'analytics' ? 'bg-white text-[#631DC3]' : 'bg-white/20 text-white hover:bg-white/30'}`}>View Analytics</button>
+            <button 
+              onClick={() => setActiveTab('settings')} 
+              className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'settings' ? 'bg-[#F5A623] text-[#1A1D23] shadow-lg shadow-orange-500/20' : 'bg-white/20 text-white hover:bg-[#F5A623] hover:text-[#1A1D23]'}`}
+            >
+              Edit Profile
+            </button>
+            <button 
+              onClick={() => setActiveTab('analytics')} 
+              className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'analytics' ? 'bg-[#F5A623] text-[#1A1D23] shadow-lg shadow-orange-500/20' : 'bg-white/20 text-white hover:bg-[#F5A623] hover:text-[#1A1D23]'}`}
+            >
+              View Analytics
+            </button>
           </div>
         </motion.div>
 
@@ -108,15 +122,17 @@ const ProfileDashboard = () => {
                 </div>
 
                 <div className="lg:col-span-2 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
-                  <h3 className="font-bold text-sm text-slate-700 mb-8">Achievements</h3>
+                  <h3 className="font-bold text-base text-slate-800 mb-6">Achievements</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <AchievementCard title="7-Day Streak" desc="Studied for 7 consecutive days" icon="star-01.png" active />
                     <AchievementCard title="High Retention" desc="Achieved 90% retention rate" icon="chart-breakout-square.png" active />
+                    <AchievementCard title="Study Master" desc="Completed 50+ documents" icon="grid-03.png" active={false} />
+                    <AchievementCard title="Cognitive Champion" desc="Maintained optimal cognitive load" icon="check-done-01.png" active />
                   </div>
                 </div>
               </div>
 
-              {/* RESTORED RECENT ACTIVITY */}
+              {/* RECENT ACTIVITY */}
               <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
                 <h3 className="font-bold text-sm text-slate-700 mb-8">Recent Activity</h3>
                 <div className="space-y-6">
@@ -135,9 +151,9 @@ const ProfileDashboard = () => {
                   <motion.button 
                     whileTap={{ scale: 0.95 }} 
                     onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#F9FAFB] border border-gray-100 rounded-xl text-[12px] font-bold text-slate-600 hover:bg-[#631DC3] hover:text-white transition-all shadow-sm"
+                    className="flex items-center gap-2 px-4 py-2 bg-[#F9FAFB] border border-gray-100 rounded-xl text-[12px] font-bold text-slate-600 hover:bg-[#F5A623] hover:text-[#1A1D23] transition-all shadow-sm group"
                   >
-                    <img src="/images/mdi_pencil.png" className="w-4 h-4 opacity-70" alt="edit" /> Edit
+                    <img src="/images/mdi_pencil.png" className="w-4 h-4 opacity-70 group-hover:opacity-100" alt="edit" /> Edit
                   </motion.button>
                 )}
               </div>
@@ -160,13 +176,13 @@ const ProfileDashboard = () => {
                   >
                     <button 
                       onClick={() => setIsEditing(false)}
-                      className="px-6 py-2 text-slate-400 text-sm font-bold hover:text-slate-600 transition-colors"
+                      className="px-6 py-2 text-slate-400 text-sm font-bold hover:text-red-500 transition-colors"
                     >
                       Cancel
                     </button>
                     <button 
                       onClick={() => setIsEditing(false)}
-                      className="px-8 py-2.5 bg-[#631DC3] text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-200 hover:brightness-110 transition-all"
+                      className="px-8 py-2.5 bg-[#F5A623] text-[#1A1D23] rounded-xl text-sm font-bold shadow-lg shadow-orange-500/20 hover:brightness-110 transition-all"
                     >
                       Save Changes
                     </button>
@@ -195,24 +211,30 @@ const StatCard = ({ label, value, trend, icon }: any) => (
 );
 
 const AchievementCard = ({ title, desc, icon, active = false }: any) => (
-  <div className={`flex items-center gap-4 p-5 rounded-2xl border ${active ? 'border-gray-200 bg-white shadow-sm' : 'border-gray-50 bg-gray-50/50 opacity-60'}`}>
-    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-      <img src={`/images/${icon}`} className="w-5 h-5 opacity-60" alt="icon" />
+  <div className={`flex items-center gap-4 p-4 rounded-xl transition-all ${
+    active 
+      ? 'bg-[#F4F5F7] border-2 border-[#1A1D23]' 
+      : 'bg-white border border-gray-100 opacity-60'
+  }`}>
+    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+      active ? 'bg-[#E5E7EB]' : 'bg-gray-50'
+    }`}>
+      <img src={`/images/${icon}`} className={`w-5 h-5 ${active ? 'opacity-80' : 'opacity-40'}`} alt="icon" />
     </div>
     <div className="text-left">
-      <p className="text-sm font-bold text-slate-800">{title}</p>
-      <p className="text-[10px] text-slate-400">{desc}</p>
+      <p className={`text-sm font-bold ${active ? 'text-[#1A1D23]' : 'text-gray-400'}`}>{title}</p>
+      <p className={`text-[11px] ${active ? 'text-gray-500' : 'text-gray-300'}`}>{desc}</p>
     </div>
   </div>
 );
 
 const ActivityItem = ({ title, time, icon }: any) => (
   <div className="flex items-center gap-4 group cursor-pointer">
-    <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center transition-colors group-hover:bg-indigo-50">
-      <img src={`/images/${icon}`} className="w-4 h-4 opacity-40" alt="icon" />
+    <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center transition-colors group-hover:bg-orange-50">
+      <img src={`/images/${icon}`} className="w-4 h-4 opacity-40 group-hover:opacity-100 transition-opacity" alt="icon" />
     </div>
     <div>
-      <p className="text-sm font-bold text-slate-700 group-hover:text-[#631DC3] transition-colors">{title}</p>
+      <p className="text-sm font-bold text-slate-700 group-hover:text-[#F5A623] transition-colors">{title}</p>
       <p className="text-[11px] text-slate-400">{time}</p>
     </div>
   </div>
@@ -223,7 +245,7 @@ const InputBlock = ({ label, placeholder, disabled }: any) => (
     <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">{label}</label>
     <input 
       disabled={disabled} 
-      className={`w-full border border-gray-100 rounded-xl px-5 py-4 text-sm font-medium outline-none transition-all ${disabled ? 'bg-[#F9FAFB] opacity-80' : 'bg-white ring-2 ring-[#631DC3]/10 focus:ring-[#631DC3]'}`} 
+      className={`w-full border border-gray-100 rounded-xl px-5 py-4 text-sm font-medium outline-none transition-all ${disabled ? 'bg-[#F9FAFB] opacity-80' : 'bg-white ring-2 ring-[#F5A623]/20 focus:ring-[#F5A623]'}`} 
       placeholder={placeholder} 
     />
   </div>
@@ -234,7 +256,7 @@ const SelectBlock = ({ label, options, disabled }: any) => (
     <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">{label}</label>
     <select 
       disabled={disabled} 
-      className={`w-full border border-gray-100 rounded-xl px-5 py-4 text-sm font-medium outline-none appearance-none transition-all ${disabled ? 'bg-[#F9FAFB] opacity-80' : 'bg-white ring-2 ring-[#631DC3]/10 focus:ring-[#631DC3]'}`}
+      className={`w-full border border-gray-100 rounded-xl px-5 py-4 text-sm font-medium outline-none appearance-none transition-all ${disabled ? 'bg-[#F9FAFB] opacity-80' : 'bg-white ring-2 ring-[#F5A623]/20 focus:ring-[#F5A623]'}`}
     >
       {options.map((opt: string) => <option key={opt}>{opt}</option>)}
     </select>
