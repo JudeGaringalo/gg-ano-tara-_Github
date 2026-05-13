@@ -32,6 +32,7 @@ const staggerContainer = {
 export default function LandingPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -50,53 +51,89 @@ export default function LandingPage() {
     }
   };
 
-  const firstRow = TEAM_MEMBERS.slice(0, 4);
-  const secondRow = TEAM_MEMBERS.slice(4, 7);
-
   return (
-    <div className="min-h-screen bg-white relative overflow-hidden">
+    <div className="min-h-screen bg-white relative overflow-x-hidden">
       <div className="absolute inset-0 z-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px] opacity-50"></div>
 
-      {/* --- NAVBAR --- */}
-      <nav className="relative z-50 flex items-center justify-between px-6 md:px-8 py-5 max-w-7xl mx-auto bg-white/80 backdrop-blur-md">
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-          className="flex items-center w-20 md:w-24 h-auto"
-        >
-          <img 
-            src="/images/logo.png" 
-            alt="Echo Logo" 
-            className="w-full h-auto object-contain"
-            style={{ filter: 'invert(18%) sepia(88%) saturate(4535%) hue-rotate(262deg) brightness(82%) contrast(92%)' }}
-          />
-        </motion.div>
-
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="hidden md:flex items-center gap-8 lg:gap-12 text-sm font-medium text-gray-600"
-        >
-          <Link href="#features" className="hover:text-[#5A22C3] transition">Features</Link>
-          <Link href="#developers" className="hover:text-[#5A22C3] transition">Developers</Link>
-          <Link href="#about-us" className="hover:text-[#5A22C3] transition">About Us</Link>
-        </motion.div>
-
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-        >
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-5 py-2 bg-[#5A22C3] text-white rounded-lg hover:bg-[#4a1ca3] transition shadow-md font-medium text-sm"
+      {/* --- RESPONSIVE NAVBAR --- */}
+      <nav className="relative z-50 px-6 md:px-8 py-5 max-w-7xl mx-auto bg-white/80 backdrop-blur-md sticky top-0 md:static">
+        <div className="flex items-center justify-between">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            className="flex items-center w-20 md:w-24 h-auto"
           >
-            Get started
-          </motion.button>
-        </motion.div>
+            <img 
+              src="/images/logo.png" 
+              alt="Echo Logo" 
+              className="w-full h-auto object-contain"
+              style={{ filter: 'invert(18%) sepia(88%) saturate(4535%) hue-rotate(262deg) brightness(82%) contrast(92%)' }}
+            />
+          </motion.div>
+
+          {/* Desktop Links */}
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="hidden md:flex items-center gap-8 lg:gap-12 text-sm font-medium text-gray-600"
+          >
+            <Link href="#features" className="hover:text-[#5A22C3] transition">Features</Link>
+            <Link href="#developers" className="hover:text-[#5A22C3] transition">Developers</Link>
+            <Link href="#about-us" className="hover:text-[#5A22C3] transition">About Us</Link>
+          </motion.div>
+
+          <div className="flex items-center gap-4">
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="hidden md:block"
+            >
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-5 py-2 bg-[#5A22C3] text-white rounded-lg hover:bg-[#4a1ca3] transition shadow-md font-medium text-sm"
+              >
+                Get started
+              </motion.button>
+            </motion.div>
+
+            {/* Mobile Menu Toggle Button */}
+            <button 
+              className="md:hidden text-gray-600 focus:outline-none"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {isMobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Dropdown Menu */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden mt-4 flex flex-col gap-4 overflow-hidden"
+            >
+              <Link href="#features" onClick={() => setIsMobileMenuOpen(false)} className="text-gray-600 hover:text-[#5A22C3] font-medium transition">Features</Link>
+              <Link href="#developers" onClick={() => setIsMobileMenuOpen(false)} className="text-gray-600 hover:text-[#5A22C3] font-medium transition">Developers</Link>
+              <Link href="#about-us" onClick={() => setIsMobileMenuOpen(false)} className="text-gray-600 hover:text-[#5A22C3] font-medium transition">About Us</Link>
+              <button className="w-full mt-2 px-5 py-3 bg-[#5A22C3] text-white rounded-lg hover:bg-[#4a1ca3] transition shadow-md font-medium text-sm">
+                Get started
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
       {/* --- HERO SECTION --- */}
@@ -105,7 +142,7 @@ export default function LandingPage() {
           initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8 }}
-          className="max-w-xl text-center lg:text-left mx-auto lg:mx-0"
+          className="max-w-xl text-center lg:text-left mx-auto lg:mx-0 order-2 lg:order-1"
         >
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.2] lg:leading-[1.1] mb-6 text-gray-900">
             Intelligent audio learning platform
@@ -114,17 +151,16 @@ export default function LandingPage() {
             Process multiple file formats into structured, concise, and interactive audio study guides.
           </p>
           
-          {/* Form Container: Widened to match image_e9e35c.png */}
           <div className="flex flex-col sm:flex-row gap-3 max-w-lg lg:max-w-xl mx-auto lg:mx-0">
             <input 
               type="email" 
               placeholder="Enter your email" 
-              className="flex-[2] px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600 bg-white/50 backdrop-blur-sm"
+              className="flex-[2] px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600 bg-white/50 backdrop-blur-sm w-full"
             />
             <motion.button 
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex-1 px-8 py-3 bg-[#5A22C3] text-white font-medium rounded-md hover:bg-[#4a1ca3] transition shadow-md whitespace-nowrap min-w-[160px]"
+              className="flex-1 px-8 py-3 bg-[#5A22C3] text-white font-medium rounded-md hover:bg-[#4a1ca3] transition shadow-md whitespace-nowrap w-full sm:w-auto"
             >
               Get started
             </motion.button>
@@ -132,27 +168,24 @@ export default function LandingPage() {
           <p className="text-xs text-gray-500 mt-3">We value your privacy. See our privacy policy.</p>
         </motion.div>
 
-        <div className="relative w-full flex justify-center lg:justify-end">
-          {/* Arrow hidden on screens smaller than lg (desktop) */}
+        <div className="relative w-full flex justify-center lg:justify-end order-1 lg:order-2">
+          {/* Arrow hidden on screens smaller than lg */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: [0, -12, 0] }}
-            transition={{ 
-              opacity: { duration: 0.8 },
-              y: { duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.8 } 
-            }}
+            transition={{ opacity: { duration: 0.8 }, y: { duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.8 } }}
             className="hidden lg:block absolute left-[-45px] bottom-16 w-48 h-48 z-30 pointer-events-none"
           >
             <img src="/images/Hand-drawn arrow.png" alt="Arrow" className="w-full h-full object-contain" />
           </motion.div>
 
-          {/* Video Preview */}
+          {/* Video Preview: Responsive width adjustments */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8 }}
             onClick={togglePlay}
-            className="relative w-full max-w-[450px] lg:max-w-[500px] aspect-[4/5] rounded-xl overflow-hidden flex items-center justify-center z-10 cursor-pointer group shadow-2xl"
+            className="relative w-full max-w-[320px] sm:max-w-[450px] lg:max-w-[500px] aspect-[4/5] rounded-xl overflow-hidden flex items-center justify-center z-10 cursor-pointer group shadow-2xl mx-auto"
           >
             <video 
               ref={videoRef}
@@ -184,7 +217,7 @@ export default function LandingPage() {
         <h3 className="text-[#5A22C3] font-semibold text-xs md:text-sm tracking-wide uppercase mb-3">Main Features</h3>
         <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">Smart Learning Companion</h2>
         <p className="text-gray-600 text-sm md:text-lg leading-relaxed mb-8">
-          Instead of a static tool, this feature acts as an empathetic digital partner that monitors the user’s interaction with dense academic materials. It utilizes a linguistic analysis algorithm to measure the density of an uploaded document, calculating sentence complexity and academic jargon frequency. The Companion proactively interacts with the user via a “Cognitive Load” visualizer. If the system detects a high probability of mental fatigue, the Companion suggests “Audio Chunks,” breaking a 60 minute document into manageable segments to preserve the user’s attention span. It transforms a modern frustration–mental shutdown during workplace immersion–into an invisible convenience by ensuring the student remains mentally fresh through structured, AI-guided pacing.
+          Instead of a static tool, this feature acts as an empathetic digital partner that monitors the user’s interaction with dense academic materials. It utilizes a linguistic analysis algorithm to measure the density of an uploaded document, calculating sentence complexity and academic jargon frequency. The Companion proactively interacts with the user via a “Cognitive Load” visualizer. If the system detects a high probability of mental fatigue, the Companion suggests “Audio Chunks,” breaking a 60 minute document into manageable segments to preserve the user’s attention span.
         </p>
       </motion.section>
 
@@ -195,7 +228,7 @@ export default function LandingPage() {
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center lg:text-left"
+          className="text-center lg:text-left order-2 lg:order-1"
         >
           <div className="w-12 h-12 bg-[#F3E8FF] rounded-full flex items-center justify-center mb-6 mx-auto lg:mx-0">
             <img src="/images/message-chat-circle.png" alt="Exam Mode Icon" className="w-7 h-7 object-contain" />
@@ -204,7 +237,7 @@ export default function LandingPage() {
           <p className="text-gray-600 text-sm md:text-lg leading-relaxed mb-8">
             This feature automates the extraction of high-value information by scanning documents for structural cues such as bolded terms, definitions and summary sections. It instantly generates a “High-Priority Audio Brief.” Instead of listening to the entire document, the user can toggle “Exam Mode” to hear only the critical definitions and potential test questions, significantly reducing study time while increasing focus on essential data.
           </p>
-          <ul className="space-y-4 inline-block text-left">
+          <ul className="space-y-4 inline-block text-left w-full sm:w-auto">
             {["Automated Summarization", "Concise and Interactive", "Interactive Skim-Sync"].map((item, index) => (
               <li key={index} className="flex items-center gap-3 text-gray-700 font-medium text-sm md:text-base">
                 <div className="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full border-2 border-[#5A22C3] flex items-center justify-center">
@@ -223,9 +256,9 @@ export default function LandingPage() {
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="relative rounded-2xl overflow-hidden"
+          className="relative rounded-2xl overflow-hidden order-1 lg:order-2"
         >
-          <img src="/images/landing 2.png" alt="Exam Mode" className="w-full h-auto object-cover" />
+          <img src="/images/landing 2.png" alt="Exam Mode" className="w-full h-auto object-cover rounded-xl shadow-lg" />
         </motion.div>
       </section>
       
@@ -238,7 +271,7 @@ export default function LandingPage() {
           transition={{ duration: 0.6 }}
           className="relative rounded-2xl overflow-hidden"
         >
-          <img src="/images/landing 3.png" alt="Skim-Sync" className="w-full h-auto object-cover" />
+          <img src="/images/landing 3.png" alt="Skim-Sync" className="w-full h-auto object-cover rounded-xl shadow-lg" />
         </motion.div>
 
         <motion.div 
@@ -246,7 +279,7 @@ export default function LandingPage() {
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="order-1 lg:order-2 text-center lg:text-left"
+          className="text-center lg:text-left"
         >
           <div className="w-12 h-12 bg-[#F3E8FF] rounded-full flex items-center justify-center mb-6 mx-auto lg:mx-0">
             <img src="/images/Icon (2).png" alt="Icon" className="w-7 h-7 object-contain" />
@@ -255,7 +288,7 @@ export default function LandingPage() {
           <p className="text-gray-600 text-sm md:text-lg leading-relaxed mb-8">
             This creates a simultaneous multimodal learning environment where the web application highlights the corresponding text on the screen in real-time as the audio brief plays. By allowing users to skim with their eyes while absorbing with their ears, it caters to different learning styles and helps keep the user’s place in the document even in high-distraction environments like a commute.
           </p>
-          <ul className="space-y-4 inline-block text-left">
+          <ul className="space-y-4 inline-block text-left w-full sm:w-auto">
             {["Interactive audio guides", "Cross-device access", "Active Recall Check-ins"].map((item, index) => (
               <li key={index} className="flex items-center gap-3 text-gray-700 font-medium text-sm md:text-base">
                 <div className="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full border-2 border-[#5A22C3] flex items-center justify-center">
@@ -277,16 +310,16 @@ export default function LandingPage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center lg:text-left"
+          className="text-center lg:text-left order-2 lg:order-1"
         >
           <div className="w-12 h-12 bg-[#F3E8FF] rounded-full flex items-center justify-center mb-6 mx-auto lg:mx-0">
             <img src="/images/chart-breakout-square.png" alt="Chart Icon" className="w-7 h-7 object-contain" />
           </div>
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">Track Learning Progress</h2>
           <p className="text-gray-600 text-sm md:text-lg leading-relaxed mb-8">
-            The purpose of this feature is to transform passive listening into an active, high-retention learning session. At logical breaks in the audio brief, the system pauses and asks context-aware questions in either English or Tagalog. The user provides a verbal or text response to continue playback. This acts as a digital bridge to foundational mastery, ensuring the user is actively processing and retaining the information rather than letting it become background noise.
+            The purpose of this feature is to transform passive listening into an active, high-retention learning session. At logical breaks in the audio brief, the system pauses and asks context-aware questions in either English or Tagalog. The user provides a verbal or text response to continue playback. This acts as a digital bridge to foundational mastery.
           </p>
-          <ul className="space-y-4 inline-block text-left">
+          <ul className="space-y-4 inline-block text-left w-full sm:w-auto">
             {["Analyze key data insights", "Automated progress reports", "Universal Document Merger"].map((item, index) => (
               <li key={index} className="flex items-center gap-3 text-gray-700 font-medium text-sm md:text-base">
                 <div className="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full border-2 border-[#5A22C3] flex items-center justify-center">
@@ -305,51 +338,39 @@ export default function LandingPage() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="relative rounded-2xl overflow-hidden"
+          className="relative rounded-2xl overflow-hidden order-1 lg:order-2"
         >
-          <img src="/images/landing 4.png" alt="Progress Tracking" className="w-full h-auto object-cover" />
+          <img src="/images/landing 4.png" alt="Progress Tracking" className="w-full h-auto object-cover rounded-xl shadow-lg" />
         </motion.div>
       </section>
 
       {/* --- ABOUT US SECTION --- */}
       <motion.section id="about-us" {...fadeInUp} className="relative z-10 max-w-4xl mx-auto px-6 md:px-8 py-16 md:py-24 text-center">
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">About Us</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-8">About Us</h2>
         <p className="text-gray-600 text-sm md:text-base leading-relaxed">
-          Our journey began with a shared frustration: the sheer exhaustion of staring at endless walls of text in academic PDFs. We recognized that for Filipino college students, especially those balancing part-time jobs, leadership roles, and long commutes, the sheer volume of static PDFs often leads to cognitive overload and mental exhaustion. Our mission was to create a "digital bridge" that moves beyond passive reading, utilizing auditory processing and multimodal learning to improve retention while preserving the user's mental energy. By integrating features like Burnout Detection and Active Recall, we built an empathetic learning companion that turns lost hours into high-utility study sessions, ensuring that students can stay productive without the burnout.
+          Our journey began with a shared frustration: the sheer exhaustion of staring at endless walls of text in academic PDFs. We recognized that for Filipino college students, especially those balancing part-time jobs, leadership roles, and long commutes, the sheer volume of static PDFs often leads to cognitive overload and mental exhaustion. Our mission was to create a "digital bridge" that moves beyond passive reading, utilizing auditory processing and multimodal learning to improve retention while preserving the user's mental energy.
         </p>
       </motion.section>
 
       {/* --- MEET THE DEVELOPERS SECTION --- */}
-      <section id="developers" className="relative z-10 max-w-7xl mx-auto px-6 md:px-8 py-24 md:pb-32">
+      <section id="developers" className="relative z-10 max-w-7xl mx-auto px-6 md:px-8 py-16 md:py-24 md:pb-32">
         <motion.h2 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-3xl font-bold text-gray-900 text-center mb-16"
+          className="text-3xl md:text-4xl font-bold text-gray-900 text-center mb-12 md:mb-16"
         >
           Meet the Developers
         </motion.h2>
 
-        {/* Row 1 - Members with adjusted smaller width */}
+        {/* Fluid CSS Grid for auto-wrapping across screen sizes */}
         <motion.div 
           variants={staggerContainer}
           initial="initial"
           whileInView="whileInView"
-          className="flex flex-wrap justify-center gap-6 md:gap-8 mb-12 md:mb-16"
+          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8 justify-items-center"
         >
-          {firstRow.map((dev) => (
-            <DeveloperCard key={dev.id} dev={dev} />
-          ))}
-        </motion.div>
-
-        {/* Row 2 - Members with adjusted smaller width */}
-        <motion.div 
-          variants={staggerContainer}
-          initial="initial"
-          whileInView="whileInView"
-          className="flex flex-wrap justify-center gap-6 md:gap-8"
-        >
-          {secondRow.map((dev) => (
+          {TEAM_MEMBERS.map((dev) => (
             <DeveloperCard key={dev.id} dev={dev} />
           ))}
         </motion.div>
@@ -358,25 +379,32 @@ export default function LandingPage() {
   );
 }
 
-function DeveloperCard({ dev }: { dev: any }) {
+// Typing applied locally
+interface DevProps {
+  id: number;
+  name: string;
+  role: string;
+  img: string;
+}
+
+function DeveloperCard({ dev }: { dev: DevProps }) {
   return (
     <motion.div 
       variants={fadeInUp}
       whileHover={{ y: -5 }}
-      // Adjusted width from 220px to 190px for a "smaller" look
-      className="flex flex-col w-[160px] sm:w-[190px] cursor-pointer"
+      className="flex flex-col w-full max-w-[190px] cursor-pointer group"
     >
       <div className="w-full aspect-[3/4] overflow-hidden relative mb-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
         <img 
           src={dev.img} 
           alt={dev.name} 
-          className="w-full h-full object-cover" 
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
         />
         <div 
           className="absolute inset-0 flex flex-col justify-end p-3 sm:p-4"
-          style={{ background: 'linear-gradient(to top, rgba(88, 29, 198, 0.7) 0%, rgba(88, 29, 198, 0) 50%)' }}
+          style={{ background: 'linear-gradient(to top, rgba(88, 29, 198, 0.8) 0%, rgba(88, 29, 198, 0) 60%)' }}
         >
-          <h4 className="font-bold text-white text-lg sm:text-xl leading-[1.1] uppercase tracking-tighter">
+          <h4 className="font-bold text-white text-base sm:text-lg md:text-xl leading-[1.1] uppercase tracking-tighter">
             {dev.name.split(' ').map((part: string, i: number) => (
               <span key={i} className="block">{part}</span>
             ))}
@@ -385,7 +413,7 @@ function DeveloperCard({ dev }: { dev: any }) {
       </div>
       
       <div className="text-left px-1">
-        <p className="text-[#581DC6] text-[9px] sm:text-[10px] font-bold uppercase tracking-widest leading-tight">
+        <p className="text-[#581DC6] text-[10px] md:text-[11px] font-bold uppercase tracking-widest leading-tight">
           {dev.role}
         </p>
       </div>
