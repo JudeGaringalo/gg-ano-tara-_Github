@@ -106,28 +106,34 @@ export default function LandingPage() {
       </motion.div>
     </nav>
 
-      {/* --- HERO SECTION REFINEMENT --- */}
-<main className="relative z-10 max-w-7xl mx-auto px-6 sm:px-8 pt-12 md:pt-20 pb-16 md:pb-24 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center overflow-x-hidden">
+      {/* --- HERO SECTION --- */}
+<main className="relative z-10 max-w-7xl mx-auto px-6 sm:px-8 pt-12 md:pt-20 pb-16 md:pb-24 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
   
-  
-  <motion.div className="max-w-xl mx-auto lg:mx-0 text-center lg:text-left">
-    <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-tight mb-6 text-gray-900">
+  <motion.div 
+    initial={{ opacity: 0, x: -40 }}
+    animate={{ opacity: 1, x: 0 }}
+    transition={{ duration: 0.8 }}
+    className="max-w-xl mx-auto lg:mx-0 text-center lg:text-left"
+  >
+    <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1] mb-6 text-gray-900">
       Intelligent audio learning platform
     </h1>
     <p className="text-base sm:text-lg text-gray-600 mb-8 leading-relaxed max-w-md mx-auto lg:mx-0">
       Process multiple file formats into structured, concise, and interactive audio study guides.
     </p>
     
-    <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto lg:mx-0">
+    {/* --- UPDATED INPUT AREA: WIDER AND LONGER --- */}
+    <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xl mx-auto lg:mx-0">
       <input 
         type="email" 
         placeholder="Enter your email" 
-        className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all"
+        className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-600 outline-none text-sm sm:text-base"
       />
       <motion.button 
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className="px-6 py-3 bg-[#5A22C3] text-white font-medium rounded-md hover:bg-[#4a1ca3] transition shadow-md whitespace-nowrap"
+        // Added 'px-10' to make the button significantly longer
+        className="px-10 py-3 bg-[#5A22C3] text-white font-medium rounded-md shadow-md whitespace-nowrap text-sm sm:text-base"
       >
         Get started
       </motion.button>
@@ -135,65 +141,66 @@ export default function LandingPage() {
     <p className="text-xs text-gray-500 mt-4">We value your privacy. See our privacy policy.</p>
   </motion.div>
 
-  {/* VISUAL CONTENT: Video and Arrow */}
-  <div className="relative w-full flex justify-center lg:justify-end mt-8 lg:mt-0">
-    
-    {/* FLOATING ARROW: Hidden on very small screens, scaled for tablets */}
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ 
-        opacity: 1, 
-        y: [0, -12, 0] 
-      }}
-      transition={{ 
-        opacity: { duration: 0.8 },
-        y: { duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.8 } 
-      }}
-      // Scale down and adjust position for mobile/tablet
-      className="absolute -left-4 sm:left-[-35px] bottom-10 sm:bottom-16 w-24 h-24 sm:w-32 sm:h-32 md:w-48 md:h-48 z-30 pointer-events-none hidden xs:block"
-    >
-      <img 
-        src="/images/Hand-drawn arrow.png" 
-        alt="Arrow" 
-        className="w-full h-full object-contain rotate-[-15deg] lg:rotate-0" 
-      />
-    </motion.div>
+        {/* VISUAL COLUMN: Video and Arrow */}
+<div className="relative w-full flex justify-center lg:justify-end mt-8 lg:mt-0">
+  
+  {/* --- ARROW: Now hidden on small/medium screens --- */}
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ 
+      opacity: 1, 
+      y: [0, -12, 0] 
+    }}
+    transition={{ 
+      opacity: { duration: 0.8 },
+      y: { duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.8 } 
+    }}
+    // 'hidden' hides it by default (mobile/tablet)
+    // 'lg:block' makes it reappear on large desktop screens
+    className="absolute lg:left-[-35px] lg:bottom-16 w-48 h-48 z-30 pointer-events-none hidden lg:block"
+  >
+    <img 
+      src="/images/Hand-drawn arrow.png" 
+      alt="Arrow" 
+      className="w-full h-full object-contain" 
+    />
+  </motion.div>
 
-    {/* VIDEO CONTAINER: Responsive width and height */}
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.8 }}
-      onClick={togglePlay}
-      className="relative w-full max-w-[320px] sm:max-w-[400px] lg:max-w-[500px] aspect-[4/5] rounded-xl overflow-hidden flex items-center justify-center z-10 cursor-pointer group shadow-2xl"
-    >
-      <video 
-        ref={videoRef}
-        src="/images/landingvid.mp4" 
-        className="absolute inset-0 w-full h-full object-cover"
-        playsInline
-        muted
-        onEnded={() => setIsPlaying(false)}
-      />
+  {/* --- VIDEO CONTAINER --- */}
+  <motion.div 
+    initial={{ opacity: 0, scale: 0.9 }}
+    animate={{ opacity: 1, scale: 1 }}
+    transition={{ duration: 0.8 }}
+    onClick={togglePlay}
+    className="relative w-full max-w-[320px] xs:max-w-[380px] sm:max-w-[450px] lg:max-w-[500px] aspect-[4/5] rounded-xl overflow-hidden flex items-center justify-center z-10 cursor-pointer group shadow-2xl"
+  >
+    <video 
+      ref={videoRef}
+      src="/images/landingvid.mp4" 
+      className="absolute inset-0 w-full h-full object-cover"
+      playsInline
+      muted
+      onEnded={() => setIsPlaying(false)}
+    />
 
-      {/* Responsive Play Button Overlay */}
-      <AnimatePresence>
-        {!isPlaying && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.1 }}
-            className="relative z-20 w-16 h-16 sm:w-20 sm:h-20 bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/50 group-hover:bg-white/40 transition-colors"
-          >
-            <div className="w-0 h-0 border-t-[8px] sm:border-t-[12px] border-t-transparent border-l-[14px] sm:border-l-[20px] border-l-white border-b-[8px] sm:border-b-[12px] border-b-transparent ml-1 sm:ml-2" />
-          </motion.div>
-        )}
-      </AnimatePresence>
+    {/* Play Button Overlay */}
+    <AnimatePresence>
+      {!isPlaying && (
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 1.1 }}
+          className="relative z-20 w-16 h-16 sm:w-20 sm:h-20 bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/50 group-hover:bg-white/40 transition-colors"
+        >
+          <div className="w-0 h-0 border-t-[8px] sm:border-t-[12px] border-t-transparent border-l-[14px] sm:border-l-[20px] border-l-white border-b-[8px] sm:border-b-[12px] border-b-transparent ml-1 sm:ml-2" />
+        </motion.div>
+      )}
+    </AnimatePresence>
 
-      {!isPlaying && <div className="absolute inset-0 bg-black/10 z-10 transition-opacity" />}
-    </motion.div>
-  </div>
-</main>
+    {!isPlaying && <div className="absolute inset-0 bg-black/10 z-10 transition-opacity" />}
+  </motion.div>
+</div>
+      </main>
 
       {/* --- MAIN FEATURES INTRO --- */}
       <motion.section id="features" {...fadeInUp} className="relative z-10 max-w-4xl mx-auto px-8 py-20 text-center">
