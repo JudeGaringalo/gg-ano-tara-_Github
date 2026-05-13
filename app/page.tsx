@@ -29,12 +29,6 @@ export default function LandingPage() {
 
         {/* Auth Buttons */}
         <div className="flex items-center gap-4 text-sm font-medium">
-          <button className="px-4 py-2 border border-gray-200 rounded-md hover:bg-gray-50 transition">
-            Sign in
-          </button>
-          <button className="px-4 py-2 bg-[#5A22C3] text-white rounded-md hover:bg-[#4a1ca3] transition shadow-md">
-            Get started
-          </button>
         </div>
       </nav>
 
