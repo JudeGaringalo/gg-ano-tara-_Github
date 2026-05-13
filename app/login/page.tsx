@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import React from 'react'; 
 import { motion } from 'framer-motion';
+import { createClient } from "@/app/lib/supabase/client"; // import client 
 
 const avatarUrls = [
   "/images/Team/Jude.jpg",
@@ -15,6 +16,18 @@ const avatarUrls = [
 ];
 
 const LoginPage: React.FC = () => {
+  const supabase = createClient();
+
+  // handle login
+  const loginWithGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: "http://localhost:3000/api/auth/callback",
+      },
+    });
+  };
+
   return (
     <div className="flex min-h-screen w-full font-sans text-slate-900">
       
@@ -39,7 +52,7 @@ const LoginPage: React.FC = () => {
             <h2 className="text-4xl font-semibold tracking-tight">Log In</h2>
             <p className="mt-2 text-slate-500">Ready to fine-tune your focus?</p>
 
-            <button type="button" className="mt-8 flex w-full items-center justify-center gap-3 rounded-full border border-slate-300 bg-white px-4 py-3 text-sm font-medium transition hover:bg-slate-50 hover:scale-[1.05] active:scale-100">
+            <button onClick={loginWithGoogle}  type="button" className="mt-8 flex w-full items-center justify-center gap-3 rounded-full border border-slate-300 bg-white px-4 py-3 text-sm font-medium transition hover:bg-slate-50 hover:scale-[1.05] active:scale-100">
               <img src="/images/Social icon.png" alt="Google logo" className="h-5 w-5"/>
               Log In with Google
             </button>
