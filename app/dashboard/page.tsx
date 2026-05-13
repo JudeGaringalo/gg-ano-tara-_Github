@@ -205,19 +205,18 @@ export default function Dashboard() {
           </div>
         </nav>
 
-        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-          <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-gray-100 flex flex-col p-4 shrink-0 overflow-x-auto md:sticky md:top-[65px] md:h-[calc(100vh-65px)] z-30">
-            <div className="px-2">
-              <h2 className="text-[10px] font-bold uppercase tracking-wider mb-4 hidden md:block" style={{ color: BRAND_PURPLE }}>SkimSync Dashboard</h2>
-              <nav className="flex flex-row md:flex-col gap-2 md:gap-0 md:space-y-1 overflow-x-auto min-w-max">
-                <SidebarItem icon={<Home size={18}/>} label="Home" active={activeTab === 'home'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('home')} />
-                <SidebarItem icon={<Files size={18}/>} label="All Files" active={activeTab === 'files'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('files')} />
-                <SidebarItem icon={<BrainCircuit size={18}/>} label="Exam Mode" active={activeTab === 'exam'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('exam')} />
+        <div className="flex flex-col md:flex-row flex-1 min-h-0">
+          <aside className="w-full md:w-56 bg-white border-b md:border-b-0 md:border-r border-slate-100 flex flex-col p-4 md:p-5 shrink-0 overflow-hidden z-30">
+            <div className="flex flex-col gap-4">
+              <nav className="flex flex-col gap-1.5">
+                <SidebarItem icon={<Home size={16}/>} label="Home" active={activeTab === 'home'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('home')} />
+                <SidebarItem icon={<Files size={16}/>} label="All files" active={activeTab === 'files'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('files')} />
+                <SidebarItem icon={<BrainCircuit size={16}/>} label="Exam Mode" active={activeTab === 'exam'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('exam')} />
               </nav>
             </div>
           </aside>
 
-          <main className="flex-1 overflow-y-auto p-6 md:p-12 bg-[#F9FAFB]" ref={scrollContainerRef}>
+          <main className="flex-1 min-h-0 p-4 sm:p-6 md:p-8 lg:p-12 bg-[#F9FAFB]" ref={scrollContainerRef}>
             <AnimatePresence mode="wait">
               <motion.div 
                 key={activeTab}
@@ -281,13 +280,13 @@ function SidebarItem({ icon, label, active, brandColor, onClick }: any) {
   return (
     <button 
       onClick={onClick}
-      className={`whitespace-nowrap flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
-        active ? 'bg-[#F1F5F9] font-bold md:translate-x-1' : 'text-[#64748B] hover:bg-gray-50 font-medium'
+      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all ${
+        active ? 'bg-slate-100 font-semibold shadow-none' : 'text-[#64748B] hover:bg-slate-50 font-medium'
       }`}
       style={active ? { color: brandColor } : {}}
     >
       {icon}
-      <span className="text-sm">{label}</span>
+      <span className="text-[14px]">{label}</span>
     </button>
   );
 }
@@ -321,7 +320,7 @@ function ExamView({ BRAND_PURPLE, files, selectedFiles, setSelectedFiles, upload
     };
 
     return (
-        <div className="max-w-[1000px] mx-auto">
+      <div className="w-full max-w-[1400px] mx-auto">
             <header className="mb-8">
                 <div className="flex items-center justify-between mb-6">
                     <div>
@@ -339,11 +338,11 @@ function ExamView({ BRAND_PURPLE, files, selectedFiles, setSelectedFiles, upload
             </header>
 
             {/* Compact Upload Box */}
-            <button onClick={handleFileUpload} className="w-full border-2 border-dashed border-[#E2E8F0] rounded-[32px] bg-white p-8 flex flex-col items-center justify-center mb-12 transition-all hover:border-[#581DC680] group shadow-sm">
-                <div className="w-[64px] h-[64px] bg-[#F1F5F9] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform text-[#475569] group-hover:text-[#581DC6]"><Upload size={28} /></div>
-                <h3 className="text-[20px] font-bold mb-1">Upload Study Materials</h3>
-                <p className="text-[#64748B] text-[15px] mb-5 font-medium">Select documents to generate exam mode briefs</p>
-                <div className="bg-[#0F172A] text-white px-8 py-2.5 rounded-2xl font-bold text-[14px] group-hover:bg-[#581DC6] transition-colors shadow-lg">Choose Files</div>
+            <button onClick={handleFileUpload} className="w-full border-2 border-dashed border-[#E2E8F0] rounded-[24px] sm:rounded-[32px] bg-white p-5 sm:p-6 md:p-8 flex flex-col items-center justify-center mb-12 transition-all hover:border-[#581DC680] group shadow-sm">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-[64px] md:h-[64px] bg-[#F1F5F9] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform text-[#475569] group-hover:text-[#581DC6]"><Upload size={24} className="sm:hidden" /><Upload size={28} className="hidden sm:block" /></div>
+              <h3 className="text-[18px] sm:text-[20px] font-bold mb-1 text-center">Upload Study Materials</h3>
+              <p className="text-[#64748B] text-sm sm:text-[15px] mb-5 font-medium text-center max-w-md">Select documents to generate exam mode briefs</p>
+              <div className="bg-[#0F172A] text-white px-6 sm:px-8 py-2.5 rounded-2xl font-bold text-[13px] sm:text-[14px] group-hover:bg-[#581DC6] transition-colors shadow-lg">Choose Files</div>
             </button>
 
             {/* Available Documents */}
@@ -387,22 +386,24 @@ function ExamView({ BRAND_PURPLE, files, selectedFiles, setSelectedFiles, upload
 
 function ExamFileRow({ file, BRAND_PURPLE, isSelected, onSelect }: any) {
     return (
-        <div className={`bg-white border rounded-[24px] p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between cursor-pointer group ${isSelected ? `border-[#581DC6] ring-2 ring-[#581DC6]/10 bg-purple-50/30` : 'border-[#F1F5F9] hover:border-slate-200'}`} onClick={onSelect}>
-            <div className="flex items-center gap-4 flex-1">
-                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all ${
+        <div className={`bg-white border rounded-[20px] sm:rounded-[24px] p-4 sm:p-5 md:p-6 shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 cursor-pointer group ${isSelected ? `border-[#581DC6] ring-2 ring-[#581DC6]/10 bg-purple-50/30` : 'border-[#F1F5F9] hover:border-slate-200'}`} onClick={onSelect}>
+          <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
+            <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all ${
                     isSelected 
                         ? `bg-[#581DC6] border-[#581DC6]` 
                         : 'border-slate-300 hover:border-slate-400'
                 }`}>
-                    {isSelected && <CheckCircle2 size={16} className="text-white" fill="white" />}
+              {isSelected && <CheckCircle2 size={14} className="sm:hidden text-white" fill="white" />}
+              {isSelected && <CheckCircle2 size={16} className="hidden sm:block text-white" fill="white" />}
                 </div>
 
-                <div className="w-12 h-12 rounded-[14px] flex items-center justify-center bg-[#F3E8FF] text-[#581DC6] shrink-0">
-                    <FileText size={22} />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[14px] flex items-center justify-center bg-[#F3E8FF] text-[#581DC6] shrink-0">
+              <FileText size={18} className="sm:hidden" />
+              <FileText size={22} className="hidden sm:block" />
                 </div>
                 <div className="min-w-0">
-                    <h4 className="font-bold text-[16px] leading-tight text-slate-800 truncate mb-1">{file.name}</h4>
-                    <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-[#94A3B8] text-xs font-medium">
+              <h4 className="font-bold text-[14px] sm:text-[16px] leading-tight text-slate-800 line-clamp-2 sm:line-clamp-1 break-words mb-1">{file.name}</h4>
+              <div className="flex items-center flex-wrap gap-x-2 sm:gap-x-3 gap-y-1 text-[#94A3B8] text-[11px] sm:text-xs font-medium">
                         <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 text-[#64748B] text-[10px] font-bold uppercase">
                             {file.format}
                         </span>
@@ -422,7 +423,7 @@ function ExamFileRow({ file, BRAND_PURPLE, isSelected, onSelect }: any) {
                 </div>
             </div>
 
-            <div className="flex items-center gap-3 px-6">
+            <div className="flex items-center gap-3 sm:px-6">
                 <div className="hidden sm:block">
                     <LoadBadge load={file.load} />
                 </div>
@@ -478,7 +479,7 @@ function ExamHighlightsView({ BRAND_PURPLE, selectedFiles, examModeEnabled, setE
         : allHighlights;
 
     return (
-        <div className="max-w-[1000px] mx-auto">
+      <div className="w-full max-w-[1400px] mx-auto">
             <header className="mb-8">
                 <div className="flex items-center gap-4 mb-6">
                     <button
@@ -681,7 +682,7 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
     const keywordsCount = allHighlights.length;
 
     return (
-        <div className="max-w-[1200px] mx-auto">
+      <div className="w-full max-w-[1400px] mx-auto">
             <header className="mb-12">
                 <div className="flex items-center justify-between mb-6">
                     <div>
@@ -711,7 +712,7 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
                         {/* Flashcard Container */}
                         <div className="flex flex-col items-center gap-8 mb-8">
                             {/* Progress Bar */}
-                            <div className="w-full max-w-2xl">
+                            <div className="w-full max-w-full sm:max-w-2xl">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-bold text-slate-600">
                                         Card {currentCardIndex + 1} of {allHighlights.length}
@@ -730,14 +731,14 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
 
                             {/* Main Flashcard */}
                             <motion.div
-                                onClick={() => toggleFlip(currentCardIndex)}
-                                className="w-full max-w-3xl min-h-96 rounded-3xl shadow-2xl cursor-pointer perspective"
+                              onClick={() => toggleFlip(currentCardIndex)}
+                              className="w-full max-w-full sm:max-w-3xl min-h-[18rem] sm:min-h-[22rem] lg:min-h-[26rem] rounded-2xl sm:rounded-3xl shadow-2xl cursor-pointer perspective"
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ duration: 0.3 }}
                             >
                                 <motion.div
-                                    className={`w-full h-full rounded-3xl px-8 md:px-12 py-8 md:py-12 flex flex-col items-center justify-center text-center transition-all border-4 ${
+                                className={`w-full h-full rounded-2xl sm:rounded-3xl px-5 sm:px-8 md:px-12 py-6 sm:py-8 md:py-12 flex flex-col items-center justify-center text-center transition-all border-4 ${
                                         flippedCards.has(currentCardIndex)
                                             ? 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-300 shadow-lg'
                                             : 'bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700 shadow-2xl'
@@ -756,7 +757,7 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
                                         </div>
                                         
                                         {/* Content */}
-                                        <div className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight line-clamp-5 break-words ${
+                                        <div className={`max-w-full text-balance text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight line-clamp-4 sm:line-clamp-5 break-words ${
                                             flippedCards.has(currentCardIndex) ? 'text-slate-800' : 'text-white'
                                         }`}>
                                             {flippedCards.has(currentCardIndex) 
@@ -776,7 +777,7 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
                             </motion.div>
 
                             {/* Navigation Controls */}
-                            <div className="w-full max-w-3xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div className="w-full max-w-full sm:max-w-3xl flex flex-col sm:flex-row items-center justify-between gap-4">
                                 <button
                                     onClick={() => setCurrentCardIndex(Math.max(0, currentCardIndex - 1))}
                                     disabled={currentCardIndex === 0}
@@ -817,8 +818,8 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
             </div>
 
             {/* Exam Reviewer Export */}
-            <div className="mb-12 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-[28px] p-8">
-                <div className="flex items-center justify-between">
+            <div className="mb-12 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 md:p-8">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
                         <h2 className="text-[24px] font-bold mb-2 text-slate-900">
                             Exam Reviewer
@@ -827,7 +828,7 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
                     </div>
                     <button
                         onClick={handleExportCheatSheet}
-                        className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-md whitespace-nowrap"
+                        className="px-6 sm:px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-md whitespace-nowrap w-full md:w-auto"
                     >
                         {showCheatSheetExport ? '✓ Exported!' : 'Download Reviewer'}
                     </button>
@@ -841,13 +842,13 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
                 </h2>
                 <p className="text-slate-600 mb-6">Rate your understanding of the material (1-5)</p>
                 
-                <div className="bg-white border border-slate-100 rounded-[28px] p-8 shadow-sm">
-                    <div className="flex gap-4 justify-center mb-8">
+                <div className="bg-white border border-slate-100 rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 md:p-8 shadow-sm">
+                  <div className="flex flex-wrap gap-3 sm:gap-4 justify-center mb-8">
                         {[1, 2, 3, 4, 5].map((rating) => (
                             <motion.button
                                 key={rating}
                                 onClick={() => handleConfidenceRating(rating)}
-                                className={`w-14 h-14 rounded-2xl font-bold text-lg transition-all border-2 ${
+                        className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl font-bold text-base sm:text-lg transition-all border-2 ${
                                     confidenceRating === rating
                                         ? 'bg-purple-600 text-white border-purple-600'
                                         : 'bg-slate-100 text-slate-700 border-slate-200 hover:border-slate-300'
@@ -888,50 +889,50 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
                     Your Session Summary
                 </h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                     <motion.div
-                        className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-[24px] p-8 shadow-sm"
+                    className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 md:p-8 shadow-sm"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
                     >
                         <div className="text-4xl font-bold text-purple-600 mb-2">{timeSavedMinutes}</div>
                         <div className="text-sm text-slate-600 mb-4">Minutes Saved</div>
-                        <p className="text-xs text-slate-500">You processed {totalPages} pages efficiently with Skim Sync</p>
+                        <p className="text-xs text-slate-500 break-words">You processed {totalPages} pages efficiently with Skim Sync</p>
                     </motion.div>
 
                     <motion.div
-                        className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-[24px] p-8 shadow-sm"
+                      className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 md:p-8 shadow-sm"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
                     >
                         <div className="text-4xl font-bold text-blue-600 mb-2">{keywordsCount}</div>
                         <div className="text-sm text-slate-600 mb-4">Key Definitions</div>
-                        <p className="text-xs text-slate-500">Critical terms extracted and ready to master</p>
+                        <p className="text-xs text-slate-500 break-words">Critical terms extracted and ready to master</p>
                     </motion.div>
 
                     <motion.div
-                        className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200 rounded-[24px] p-8 shadow-sm"
+                      className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 md:p-8 shadow-sm"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}
                     >
                         <div className="text-4xl font-bold text-emerald-600 mb-2">{selectedFiles.length}</div>
                         <div className="text-sm text-slate-600 mb-4">Documents Analyzed</div>
-                        <p className="text-xs text-slate-500">Successfully processed and extracted</p>
+                        <p className="text-xs text-slate-500 break-words">Successfully processed and extracted</p>
                     </motion.div>
                 </div>
             </div>
 
             {/* Keywords Cloud */}
-            <div className="bg-slate-50 border border-slate-200 rounded-[28px] p-8 mb-12">
+            <div className="bg-slate-50 border border-slate-200 rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 md:p-8 mb-12">
                 <h3 className="text-lg font-bold mb-6 text-slate-900">Keywords Mastered</h3>
                 <div className="flex flex-wrap gap-3">
                     {allHighlights.slice(0, 12).map((highlight: any, idx: number) => (
                         <motion.span
                             key={idx}
-                            className="px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-medium text-slate-700 hover:border-purple-400 transition-colors cursor-pointer"
+                      className="px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-medium text-slate-700 hover:border-purple-400 transition-colors cursor-pointer max-w-full break-words"
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: idx * 0.05 }}
@@ -990,17 +991,17 @@ function FilesView({
   const hasFilters = activeFilterCount > 0 || searchQuery !== "";
 
   return (
-    <div className="max-w-[1000px] mx-auto">
+    <div className="w-full max-w-[1400px] mx-auto">
       <header className="mb-8">
-        <div className="flex justify-between items-end mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-6">
             <div>
                 <h1 className="text-[32px] font-bold tracking-tight text-slate-900">All Files</h1>
                 <p className="text-[#64748B] text-lg mt-1 font-medium">Total of {files.length} study documents</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full lg:w-auto">
                 <button 
                   onClick={() => setShowFilters(!showFilters)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border font-bold text-sm transition-all shadow-sm ${
+                  className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border font-bold text-sm transition-all shadow-sm w-full sm:w-auto ${
                     showFilters 
                     ? 'bg-slate-800 text-white border-slate-800' 
                     : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
@@ -1016,14 +1017,14 @@ function FilesView({
                   {showFilters ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
 
-                <div className="relative">
+                <div className="relative w-full sm:w-auto">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input 
                         type="text" 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search files..." 
-                        className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#581DC640] w-64 shadow-sm transition-all" 
+                    className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#581DC640] w-full sm:w-64 shadow-sm transition-all" 
                     />
                 </div>
             </div>
@@ -1066,30 +1067,62 @@ function FilesView({
         </AnimatePresence>
       </header>
       
-      <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden">
-        <table className="w-full text-left">
+      <div className="space-y-4 sm:hidden">
+        {files.map((file: any) => (
+          <div key={file.id} className="bg-white border border-slate-100 rounded-[22px] shadow-sm p-4">
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="p-2.5 bg-purple-50 text-[#581DC6] rounded-xl shrink-0">
+                <FileText size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-bold text-[15px] leading-snug text-slate-800 break-words line-clamp-2 mb-2">{file.name}</h3>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 mb-3">
+                  <span className="bg-[#F1F5F9] px-2.5 py-1 rounded-md border border-slate-200 text-[#64748B] font-bold uppercase">{file.format}</span>
+                  <span className="whitespace-nowrap">{file.date}</span>
+                  <span className="whitespace-nowrap">{file.size}</span>
+                  <span className="whitespace-nowrap text-[#581DC6]">{file.duration}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <LoadBadge load={file.load} />
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => onAction(`Opening ${file.name}...`)} className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                      <ExternalLink size={16} />
+                    </button>
+                    <button className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                      <MoreVertical size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden sm:block bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-x-auto">
+        <table className="min-w-[760px] w-full text-left">
           <thead className="bg-slate-50/50 border-b border-slate-100">
             <tr>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">File Name</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Format</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Load</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+              <th className="px-4 sm:px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">File Name</th>
+              <th className="px-4 sm:px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Format</th>
+              <th className="px-4 sm:px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Load</th>
+              <th className="px-4 sm:px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {files.map((file: any) => (
               <tr key={file.id} className="hover:bg-slate-50/30 transition-colors group">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
+                <td className="px-4 sm:px-6 py-4">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2 bg-purple-50 text-[#581DC6] rounded-lg"><FileText size={18} /></div>
-                    <span className="font-bold text-[14px] text-slate-700">{file.name}</span>
+                    <span className="font-bold text-[14px] text-slate-700 truncate max-w-[220px] sm:max-w-none">{file.name}</span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-center">
+                <td className="px-4 sm:px-6 py-4 text-center">
                   <span className="bg-[#F1F5F9] px-2.5 py-1 rounded text-[10px] font-bold text-[#64748B] border border-slate-200 uppercase">{file.format}</span>
                 </td>
-                <td className="px-6 py-4"><LoadBadge load={file.load} /></td>
-                <td className="px-6 py-4 text-right">
+                <td className="px-4 sm:px-6 py-4"><LoadBadge load={file.load} /></td>
+                <td className="px-4 sm:px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => onAction(`Opening ${file.name}...`)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"><ExternalLink size={16}/></button>
                     <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"><MoreVertical size={16}/></button>
@@ -1144,26 +1177,26 @@ function HomeView({ BRAND_PURPLE, files, onUpload, onAction }: any) {
 
 function FileRow({ file, BRAND_PURPLE, onAction }: any) {
   return (
-    <div className="bg-white border border-[#F1F5F9] rounded-[24px] p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
-      <div className="flex items-center gap-4 flex-1">
-        <div className="w-12 h-12 rounded-[14px] flex items-center justify-center bg-[#F3E8FF] text-[#581DC6] shrink-0">
+    <div className="bg-white border border-[#F1F5F9] rounded-[20px] sm:rounded-[24px] p-4 sm:p-5 shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
+        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[14px] flex items-center justify-center bg-[#F3E8FF] text-[#581DC6] shrink-0">
           <FileText size={22} />
         </div>
         <div className="min-w-0">
-          <h4 className="font-bold text-[16px] leading-tight text-slate-800 truncate mb-1">{file.name}</h4>
-          <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-[#94A3B8] text-xs font-medium">
-            <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 text-[#64748B] text-[10px] font-bold uppercase">
+          <h4 className="font-bold text-[15px] sm:text-[16px] leading-tight text-slate-800 line-clamp-2 sm:line-clamp-1 break-words mb-1">{file.name}</h4>
+          <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1 text-[#94A3B8] text-[11px] sm:text-xs font-medium">
+            <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 text-[#64748B] text-[10px] font-bold uppercase shrink-0">
               {file.format}
             </span>
             <span className="w-1 h-1 rounded-full bg-slate-200" />
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1 whitespace-nowrap">
               <Clock size={12} className="text-slate-300" />
               {file.date}
             </span>
             <span className="w-1 h-1 rounded-full bg-slate-200" />
-            <span>{file.size}</span>
+            <span className="whitespace-nowrap">{file.size}</span>
             <span className="w-1 h-1 rounded-full bg-slate-200" />
-            <span className="flex items-center gap-1 text-[#581DC6]">
+            <span className="flex items-center gap-1 text-[#581DC6] whitespace-nowrap">
               <Timer size={12} />
               {file.duration}
             </span>
@@ -1171,22 +1204,22 @@ function FileRow({ file, BRAND_PURPLE, onAction }: any) {
         </div>
       </div>
 
-      <div className="flex items-center gap-6 px-6">
+      <div className="flex items-center gap-3 sm:gap-6 w-full sm:w-auto sm:px-6 justify-between sm:justify-end">
         <div className="hidden sm:block">
             <LoadBadge load={file.load} />
         </div>
-        <div className="h-8 w-[1px] bg-slate-100" />
-        <div className="flex items-center gap-3">
+        <div className="hidden sm:block h-8 w-[1px] bg-slate-100" />
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <button 
             onClick={() => onAction(`Entering focus mode...`)} 
-            className="text-white px-5 py-2.5 rounded-xl font-bold text-[13px] hover:opacity-90 transition-opacity shadow-sm" 
+            className="flex-1 sm:flex-none text-white px-4 sm:px-5 py-2.5 rounded-xl font-bold text-[13px] hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap" 
             style={{ backgroundColor: BRAND_PURPLE }}
           >
             Start Learning
           </button>
           <button 
             onClick={() => onAction(`Preparing exam mode...`)} 
-            className="px-5 py-2.5 rounded-xl font-bold text-[13px] bg-[#FDFBFF] text-[#581DC6] border border-[#F3E8FF] hover:bg-[#F3E8FF] transition-colors"
+            className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 rounded-xl font-bold text-[13px] bg-[#FDFBFF] text-[#581DC6] border border-[#F3E8FF] hover:bg-[#F3E8FF] transition-colors whitespace-nowrap"
           >
             Exam Mode
           </button>
