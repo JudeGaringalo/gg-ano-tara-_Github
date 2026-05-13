@@ -43,8 +43,9 @@ const LoginPage: React.FC = () => {
   return (
     <ReactLenis root options={{ lerp: 0.1, duration: 1.5, smoothWheel: true }}>
       <style>{`::-webkit-scrollbar { display: none; } * { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
+      
       <div className="flex flex-col md:flex-row min-h-screen w-full font-sans text-slate-900 overflow-hidden md:overflow-visible">
-        <section className="relative z-30 flex w-full flex-col p-8 md:absolute md:inset-0 md:w-full md:bg-transparent lg:relative lg:w-1/2 lg:p-16 lg:bg-white overflow-hidden md:overflow-visible">
+        <section className="absolute inset-0 z-30 flex w-full flex-col p-8 justify-center lg:relative lg:inset-auto lg:w-1/2 lg:p-16 lg:bg-white">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -59,12 +60,12 @@ const LoginPage: React.FC = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-            className="flex flex-1 flex-col items-center justify-center pt-24 md:pt-0 md:-translate-y-12"
+            className="flex flex-1 flex-col items-center justify-center pt-24 xs:pt-0 md:pt-0 xs:-translate-y-20 md:-translate-y-12 lg:translate-y-0"
           >
-            <div className="w-full max-w-[340px] px-6 md:bg-white/10 md:backdrop-blur-md md:p-10 md:rounded-3xl lg:bg-transparent lg:p-0">
+            <div className="w-full max-w-[340px] px-6 py-8 bg-white/10 backdrop-blur-md rounded-3xl lg:bg-transparent lg:backdrop-blur-none lg:p-0">
               <div className="w-full max-w-sm">
-                <h2 className="text-4xl font-semibold tracking-tight md:text-white lg:text-slate-900">Log In</h2>
-                <p className="mt-2 text-slate-500 md:text-slate-200 lg:text-slate-500">Ready to fine-tune your focus?</p>
+                <h2 className="text-4xl font-semibold tracking-tight xs:text-white xs:text-xs md:text-white lg:text-slate-900">Log In</h2>
+                <p className="mt-2 text-slate-500 xs:text-slate-200 xs:text- xs md:text-slate-200 lg:text-slate-500">Ready to fine-tune your focus?</p>
 
                 <button onClick={loginWithGoogle} type="button" className="mt-8 flex w-full items-center justify-center gap-3 rounded-full border border-slate-300 bg-white px-4 py-3 text-sm font-medium transition hover:bg-slate-50 hover:scale-[1.05] active:scale-100">
                   <img src="/images/Social icon.png" alt="Google logo" className="h-5 w-5"/>
@@ -91,19 +92,20 @@ const LoginPage: React.FC = () => {
             <motion.img 
               src="/images/Hand-drawn arrow.png" 
               alt="Hand drawn arrow decoration" 
-              className="h-[250px] w-[250px] object-contain relative top-60 translate-x-[-60px] lg:h-[180px] lg:w-[180px] lg:translate-x-[-40px] lg:translate-y-[-77px] hidden md:block"
+              className="h-[250px] w-[250px] object-contain relative top-60 translate-x-[-60px] lg:h-[180px] lg:w-[180px] lg:translate-x-[-40px] lg:translate-y-[-77px] lg:block sm:hidden"
               animate={{ y: [0, -12, 0] }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
             />
           </motion.div>
         </section>
 
-        <section className="relative block w-full overflow-hidden min-h-[50vh] md:h-screen lg:w-1/2">
+        <section className="absolute inset-0 z-0 h-full w-full overflow-hidden lg:relative lg:inset-auto lg:w-1/2 lg:block min-h-[50vh] md:h-screen">
           <img src="/images/login-bg.png" alt="Student studying" className="absolute inset-0 h-full w-full object-cover z-0" />
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }} className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
+          
           <div className="absolute inset-0 z-10 bg-black/10 backdrop-blur-[1px]" style={{ backgroundImage: 'radial-gradient(circle, #ffffff22 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
-          <div className="absolute inset-0 z-20 flex flex-col justify-end p-8 md:p-16 text-white">
+          <div className="absolute inset-0 z-20 flex flex-col justify-end p-8 md:p-16 text-white xs:hidden">
             <motion.img 
               src="/images/sparkles.png" 
               alt="Sparkle"
@@ -118,8 +120,8 @@ const LoginPage: React.FC = () => {
               transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}
               className="max-w-2xl"
             >
-              <h2 className="mb-4 text-3xl md:text-3xl font-semibold leading-tight tracking-tighter">Start fine-tuning your focus.</h2>
-              <p className="mb-8 md:mb-6 text-sm md:text-md text-slate-200 leading-relaxed">
+              <h2 className="mb-4 text-3xl md:text-3xl font-semibold leading-tight tracking-tighter xs:hidden xs:txt-xs">Start fine-tuning your focus.</h2>
+              <p className="mb-8 md:mb-6 text-sm md:text-md text-slate-200 leading-relaxed xs:txt-xs">
                 Log in to unlock a smarter way to study. With Echo, your documents become dynamic audio experiences that adapt to your mental energy. 
               </p>
             </motion.div>
