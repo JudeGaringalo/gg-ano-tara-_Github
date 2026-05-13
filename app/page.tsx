@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // --- TEAM DATA ---
 const TEAM_MEMBERS = [
-  { id: 1, name: "Jahmelle Dorias", role: "Backend Developer", img: "/images/team/Jahmell.jpg" },
+  { id: 1, name: "Jahmell Dorias", role: "Backend Developer", img: "/images/team/Jahmell.jpg" },
   { id: 2, name: "Mary Garganera", role: "UI/UX Developer", img: "/images/team/Mary.jpg" },
   { id: 3, name: "Jude Garingalo", role: "Full Stack Developer", img: "/images/team/Jude.jpg" },
   { id: 4, name: "Kristine Ignas", role: "UI/UX Developer", img: "/images/team/Kristine.jpg" },
