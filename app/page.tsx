@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import BackToTop from './components/BackToTop';
 
 // --- TEAM DATA ---
 const TEAM_MEMBERS = [
@@ -52,6 +53,7 @@ export default function LandingPage() {
   };
 
   return (
+
     <div className="min-h-screen bg-white relative overflow-x-hidden">
       <div className="absolute inset-0 z-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px] opacity-50"></div>
 
@@ -367,6 +369,7 @@ export default function LandingPage() {
           </motion.div>
         </section>
       </div>
+      <BackToTop />
     </div>
   );
 }
