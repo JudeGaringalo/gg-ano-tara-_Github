@@ -1,7 +1,8 @@
-"use client"; 
+"use client";
 
+import { useRef, useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // --- TEAM DATA ---
 const TEAM_MEMBERS = [
@@ -29,10 +30,35 @@ const staggerContainer = {
 };
 
 export default function LandingPage() {
-  // Splits the data into two rows
+  /** 
+   * FIX: Explicitly typing the ref as HTMLVideoElement.
+   * This removes the red lines seen in image_2bb293.png 
+   */
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const togglePlay = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (isPlaying) {
+      video.pause();
+      setIsPlaying(false);
+    } else {
+      video.play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch((error) => {
+          console.error("Playback failed:", error);
+          setIsPlaying(false);
+        });
+    }
+  };
+
   const firstRow = TEAM_MEMBERS.slice(0, 4);
   const secondRow = TEAM_MEMBERS.slice(4, 7);
-
+  
   return (
     <div className="min-h-screen bg-white relative overflow-hidden">
       {/* Subtle Dotted Background Pattern */}
@@ -74,62 +100,87 @@ export default function LandingPage() {
       </nav>
 
       {/* --- HERO SECTION --- */}
-      <main className="relative z-10 max-w-7xl mx-auto px-8 pt-20 pb-24 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-        
-        <motion.div 
-          initial={{ opacity: 0, x: -40 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8 }}
-          className="max-w-xl"
-        >
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight leading-[1.1] mb-6 text-gray-900">
-            Intelligent audio learning platform
-          </h1>
-          <p className="text-lg text-gray-600 mb-8 leading-relaxed">
-            Process multiple file formats into structured, concise, and interactive audio study guides.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input 
-              type="email" 
-              placeholder="Enter your email" 
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600"
-            />
-            <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="px-6 py-3 bg-[#5A22C3] text-white font-medium rounded-md hover:bg-[#4a1ca3] transition shadow-md whitespace-nowrap"
-            >
-              Get started
-            </motion.button>
-          </div>
-          <p className="text-xs text-gray-500 mt-3">We value your privacy. See our privacy policy.</p>
-        </motion.div>
+<main className="relative z-10 max-w-7xl mx-auto px-8 pt-20 pb-24 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+  
+  <motion.div 
+    initial={{ opacity: 0, x: -40 }}
+    animate={{ opacity: 1, x: 0 }}
+    transition={{ duration: 0.8 }}
+    className="max-w-xl"
+  >
+    <h1 className="text-5xl md:text-6xl font-bold tracking-tight leading-[1.1] mb-6 text-gray-900">
+      Intelligent audio learning platform
+    </h1>
+    <p className="text-lg text-gray-600 mb-8 leading-relaxed">
+      Process multiple file formats into structured, concise, and interactive audio study guides.
+    </p>
+    
+    <div className="flex flex-col sm:flex-row gap-3">
+      <input 
+        type="email" 
+        placeholder="Enter your email" 
+        className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600"
+      />
+      <motion.button 
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className="px-6 py-3 bg-[#5A22C3] text-white font-medium rounded-md hover:bg-[#4a1ca3] transition shadow-md whitespace-nowrap"
+      >
+        Get started
+      </motion.button>
+    </div>
+    <p className="text-xs text-gray-500 mt-3">We value your privacy. See our privacy policy.</p>
+  </motion.div>
 
-        <div className="relative w-full flex justify-center lg:justify-end">
-          <motion.div 
-            animate={{ y: [0, -12, 0] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -left-16 bottom-12 w-32 h-32 z-20 pointer-events-none"
-          >
-            <img src="/images/Hand-drawn arrow.png" alt="Arrow" className="w-full h-full object-contain" />
-          </motion.div>
+  <div className="relative w-full flex justify-center lg:justify-end">
+    {/* --- FIXED ARROW POSITIONING --- */}
+    <motion.div 
+      animate={{ y: [0, -12, 0] }}
+      transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+      // Changed -left-16 to left-[-40px] or similar, and increased z-index
+      className="absolute left-[-20px] bottom-16 w-48 h-48 z-30 pointer-events-none"
+    >
+      <img 
+        src="/images/Hand-drawn arrow.png" 
+        alt="Arrow" 
+        className="w-full h-full object-contain" 
+      />
+    </motion.div>
 
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8 }}
-            className="relative w-full max-w-[500px] aspect-[4/5] border border-gray-200 rounded-sm shadow-xl overflow-hidden flex items-center justify-center"
-          >
-            {/* 1. YOUR NEW IMAGE */}
-            <img 
-              src="/images/landing 6.png" 
-              alt="Video Thumbnail" 
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          </motion.div>
-        </div>
-      </main>
+    <motion.div 
+  initial={{ opacity: 0, scale: 0.9 }}
+  animate={{ opacity: 1, scale: 1 }}
+  transition={{ duration: 0.8 }}
+  className="relative w-full max-w-[500px] aspect-[4/5] border border-gray-200 rounded-sm shadow-xl overflow-hidden flex items-center justify-center z-10"
+>
+  <video 
+    ref={videoRef} // Make sure this ref is defined in your component
+    src="/images/landingvid.mp4" 
+    aria-label="Video showing the platform interface" 
+    className="absolute inset-0 w-full h-full object-cover"
+    playsInline
+    muted
+    loop
+    autoPlay // Added this so the video actually starts/renders
+    preload="auto" // Forces the browser to start loading the video data immediately
+  >
+    {/* Optional: Add an explicit source tag if src attribute fails */}
+    <source src="/images/landingvid.mp4" type="video/mp4" />
+  </video>
+
+  {/* Play Button Overlay */}
+  {/* We wrap this in !isPlaying so it disappears when the video is active */}
+  {!isPlaying && (
+    <div 
+      onClick={togglePlay}
+      className="relative z-20 w-20 h-20 bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/50 cursor-pointer hover:bg-white/40 transition-all"
+    >
+      <div className="w-0 h-0 border-t-[12px] border-t-transparent border-l-[20px] border-l-white border-b-[12px] border-b-transparent ml-2" />
+    </div>
+  )}
+</motion.div>
+  </div>
+</main>
 
       {/* --- MAIN FEATURES INTRO --- */}
       <motion.section id="features" {...fadeInUp} className="relative z-10 max-w-4xl mx-auto px-8 py-20 text-center">
