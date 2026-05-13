@@ -130,8 +130,26 @@ export default function LandingPage() {
         <div className="relative w-full flex justify-center lg:justify-end">
           {/* --- ARROW OVERLAPPING PICTURE --- */}
           <motion.div 
-            animate={{ y: [0, -12, 0] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            // 1. Start hidden and slightly lower (matching your fadeInUp style)
+            initial={{ opacity: 0, y: 20 }}
+            // 2. Animate to full opacity and start the floating sequence
+            animate={{ 
+              opacity: 1, 
+              y: [0, -12, 0] 
+            }}
+            // 3. Define how the entry and loop behave
+            transition={{ 
+              // The fade-in happens once
+              opacity: { duration: 0.8, ease: "easeOut" },
+              // The Y-axis loop repeats infinitely
+              y: { 
+                duration: 4, 
+                repeat: Infinity, 
+                ease: "easeInOut",
+                // Delay the loop slightly so the "ease in" finishes first
+                delay: 0.8 
+              } 
+            }}
             className="absolute left-[-35px] bottom-16 w-48 h-48 z-30 pointer-events-none"
           >
             <img 
