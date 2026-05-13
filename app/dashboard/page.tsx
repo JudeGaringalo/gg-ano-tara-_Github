@@ -30,12 +30,17 @@ import {
   Download,
   CreditCard,
   BarChart3,
-  Zap
+  Zap,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Volume2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ReactLenis, useLenis } from '@studio-freight/react-lenis';
 
-type TabType = 'home' | 'files' | 'exam' | 'exam-results';
+type TabType = 'home' | 'files' | 'exam' | 'exam-results' | 'skim-sync';
 
 interface StudyFile {
   id: string;
@@ -72,6 +77,7 @@ export default function Dashboard() {
   const [examSelectedFiles, setExamSelectedFiles] = useState<StudyFile[]>([]);
   const [examModeEnabled, setExamModeEnabled] = useState(true);
   const [examUploadedFiles, setExamUploadedFiles] = useState<StudyFile[]>([]);
+  const [skimSyncFile, setSkimSyncFile] = useState<StudyFile | null>(INITIAL_FILES[0]);
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
   const [confidenceRating, setConfidenceRating] = useState<number | null>(null);
 
@@ -124,6 +130,11 @@ export default function Dashboard() {
     setIsProfileOpen(false);
     await supabase.auth.signOut();
     router.push('/login');
+  };
+
+  const handleStartSkimSync = (file: StudyFile) => {
+    setSkimSyncFile(file);
+    setActiveTab('skim-sync');
   };
 
   const filteredFiles = useMemo(() => {
@@ -211,6 +222,7 @@ export default function Dashboard() {
               <nav className="flex flex-col gap-1.5">
                 <SidebarItem icon={<Home size={16}/>} label="Home" active={activeTab === 'home'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('home')} />
                 <SidebarItem icon={<Files size={16}/>} label="All files" active={activeTab === 'files'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('files')} />
+                <SidebarItem icon={<Zap size={16}/>} label="Skim Sync" active={activeTab === 'skim-sync'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('skim-sync')} />
                 <SidebarItem icon={<BrainCircuit size={16}/>} label="Exam Mode" active={activeTab === 'exam'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('exam')} />
               </nav>
             </div>
@@ -225,7 +237,7 @@ export default function Dashboard() {
                 exit={{ opacity: 0, x: -10 }}
                 transition={{ duration: 0.2 }}
               >
-                  {activeTab === 'home' && <HomeView BRAND_PURPLE={BRAND_PURPLE} files={files} onUpload={handleUpload} onAction={showToast} />}
+                  {activeTab === 'home' && <HomeView BRAND_PURPLE={BRAND_PURPLE} files={files} onUpload={handleUpload} onAction={showToast} onStartSkimSync={handleStartSkimSync} />}
                   
                   {activeTab === 'files' && (
                       <FilesView 
@@ -252,6 +264,13 @@ export default function Dashboard() {
                           uploadedFiles={examUploadedFiles}
                           setUploadedFiles={setExamUploadedFiles}
                           onViewBriefs={() => setActiveTab('exam-results')}
+                      />
+                  )}
+
+                  {activeTab === 'skim-sync' && skimSyncFile && (
+                      <SkimSyncView
+                        file={skimSyncFile}
+                        onBack={() => setActiveTab('home')}
                       />
                   )}
 
@@ -963,6 +982,240 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
     );
 }
 
+function SkimSyncView({ file, onBack }: any) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [language, setLanguage] = useState<'English' | 'Filipino'>('English');
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isPlaying) {
+      interval = setInterval(() => {
+        setProgress((prev) => (prev >= 100 ? 0 : prev + 0.5));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying]);
+
+  const formatTime = (percent: number) => {
+    const totalSeconds = 180;
+    const currentSeconds = Math.floor((percent / 100) * totalSeconds);
+    const mins = Math.floor(currentSeconds / 60);
+    const secs = currentSeconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="max-w-[1200px] mx-auto pb-28 relative min-h-[calc(100vh-100px)]">
+      <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-[28px] font-bold tracking-tight text-slate-900 mb-1">
+            {file.name}
+          </h1>
+          <p className="text-slate-400 text-sm font-medium">Interactive Skim-Sync Mode</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={onBack}
+            className="px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            Exit
+          </button>
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-sm transition-colors">
+            <Zap size={16} />
+            Switch to Exam Mode
+          </button>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
+        <div className="lg:col-span-2 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 border border-slate-700 rounded-2xl p-8 md:p-12 shadow-lg h-[600px] overflow-y-auto flex flex-col items-center justify-center relative">
+          <div className="space-y-8 text-center flex flex-col items-center w-full justify-center h-full">
+            {/* Calculate current section */}
+            {progress >= 0 && progress < 16 && (
+              <>
+                <p className="text-4xl md:text-6xl font-bold leading-tight text-white">
+                  Introduction to Psychology
+                </p>
+                <p className="text-2xl md:text-3xl font-semibold leading-snug text-white/70">
+                  Psychology is the scientific study of the mind and behavior
+                </p>
+                <p className="text-xl md:text-2xl leading-snug text-white/40 mt-8">
+                  Evolution of the Field
+                </p>
+              </>
+            )}
+
+            {progress >= 16 && progress < 32 && (
+              <>
+                <p className="text-4xl md:text-6xl font-bold leading-tight text-white">
+                  Evolution of the Field
+                </p>
+                <p className="text-2xl md:text-3xl font-semibold leading-snug text-white/70">
+                  From Wilhelm Wundt to modern practice
+                </p>
+                <p className="text-xl md:text-2xl leading-snug text-white/40 mt-8">
+                  Key Areas
+                </p>
+              </>
+            )}
+
+            {progress >= 32 && progress < 48 && (
+              <>
+                <p className="text-4xl md:text-6xl font-bold leading-tight text-white">
+                  Key Areas
+                </p>
+                <p className="text-2xl md:text-3xl font-semibold leading-snug text-white/70">
+                  Cognitive, developmental, social, and clinical
+                </p>
+                <p className="text-xl md:text-2xl leading-snug text-white/40 mt-8">
+                  Cognitive Psychology
+                </p>
+              </>
+            )}
+
+            {progress >= 48 && progress < 64 && (
+              <>
+                <p className="text-4xl md:text-6xl font-bold leading-tight text-white">
+                  Cognitive Psychology
+                </p>
+                <p className="text-2xl md:text-3xl font-semibold leading-snug text-white/70">
+                  Understanding how we think, learn, and remember
+                </p>
+                <p className="text-xl md:text-2xl leading-snug text-white/40 mt-8">
+                  Research Methods
+                </p>
+              </>
+            )}
+
+            {progress >= 64 && progress < 80 && (
+              <>
+                <p className="text-4xl md:text-6xl font-bold leading-tight text-white">
+                  Research Methods
+                </p>
+                <p className="text-2xl md:text-3xl font-semibold leading-snug text-white/70">
+                  Experiments, surveys, and observations
+                </p>
+                <p className="text-xl md:text-2xl leading-snug text-white/40 mt-8">
+                  Ethics & Standards
+                </p>
+              </>
+            )}
+
+            {progress >= 80 && (
+              <>
+                <p className="text-4xl md:text-6xl font-bold leading-tight text-white">
+                  Ethics & Standards
+                </p>
+                <p className="text-2xl md:text-3xl font-semibold leading-snug text-white/70">
+                  Informed consent, confidentiality, and protection
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-6">
+              <BrainCircuit size={18} /> Cognitive Load
+            </h3>
+            <div className="mb-6">
+              <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
+                <span>Current Load</span>
+                <span className="text-slate-800">65%</span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div className="bg-orange-500 h-2.5 rounded-full" style={{ width: '65%' }}></div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                <Clock size={14} className="text-slate-400" />
+                Study Time: <span className="text-slate-800 font-bold ml-1">{formatTime(progress)}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                <CheckCircle2 size={14} className="text-slate-400" />
+                Progress: <span className="text-slate-800 font-bold ml-1">{Math.floor(progress)}%</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <h3 className="font-bold text-slate-800 mb-6">Document Info</h3>
+            <div className="space-y-4 text-sm text-slate-500 mb-8">
+              <div className="flex items-center gap-2">
+                Format: <span className="font-bold text-slate-800">PDF</span>
+              </div>
+              <div className="flex items-center gap-2">
+                Pages: <span className="font-bold text-slate-800">12</span>
+              </div>
+              <div className="flex items-center gap-2">
+                Complexity: <span className="font-bold text-slate-800">Medium</span>
+              </div>
+              <div className="flex items-center gap-2">
+                Est. Duration: <span className="font-bold text-slate-800">45 min</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="language" className="text-xs font-bold uppercase tracking-wide text-slate-400">Language</label>
+                <select
+                  id="language"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value as 'English' | 'Filipino')}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#581DC640]"
+                >
+                  <option value="English">English</option>
+                  <option value="Filipino">Filipino</option>
+                </select>
+              </div>
+            </div>
+            <button className="w-full flex items-center justify-center gap-2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-sm transition-colors">
+              <Download size={16} />
+              Download Audio (MP3)
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 bg-white border-t border-slate-200 px-6 py-5 shadow-[0_-4px_20px_rgba(0,0,0,0.02)] z-50 w-[calc(100%-32px)] max-w-[680px] rounded-t-3xl">
+        <div className="mx-auto max-w-[620px] space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-[10px] font-bold text-slate-400 w-10 text-left">{formatTime(progress)}</span>
+            <div className="flex-1 bg-slate-100 h-1.5 rounded-full overflow-hidden mx-2">
+              <div className="bg-slate-800 h-full rounded-full" style={{ width: `${progress}%` }} />
+            </div>
+            <span className="text-[10px] font-bold text-slate-400 w-10 text-right">3:00</span>
+          </div>
+
+          <div className="flex items-center justify-center gap-6">
+            <button className="text-slate-400 hover:text-slate-700 transition-colors p-2 rounded-full hover:bg-slate-100">
+              <SkipBack size={18} />
+            </button>
+            <button 
+              onClick={() => setIsPlaying(!isPlaying)}
+              className="w-12 h-12 bg-[#0F172A] hover:bg-slate-800 rounded-full flex items-center justify-center text-white transition-colors shadow-lg hover:scale-105"
+            >
+              {isPlaying ? <Pause size={18} fill="white" /> : <Play size={18} fill="white" />}
+            </button>
+            <button className="text-slate-400 hover:text-slate-700 transition-colors p-2 rounded-full hover:bg-slate-100">
+              <SkipForward size={18} />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-center gap-3">
+            <Volume2 size={16} className="text-slate-400" />
+            <div className="w-24 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+              <div className="bg-slate-300 h-full rounded-full" style={{ width: '80%' }}></div>
+            </div>
+            <span className="text-[10px] font-bold text-slate-400">80%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FilesView({ 
   BRAND_PURPLE, 
   files, 
@@ -1146,7 +1399,7 @@ function LoadBadge({ load }: { load: string }) {
   return <span className={`text-[11px] font-bold px-2.5 py-1 rounded-md border ${styles[load]}`}>{load} Load</span>;
 }
 
-function HomeView({ BRAND_PURPLE, files, onUpload, onAction }: any) {
+function HomeView({ BRAND_PURPLE, files, onUpload, onAction, onStartSkimSync }: any) {
   return (
     <div className="max-w-[1000px] mx-auto">
       <header className="mb-8">
@@ -1168,14 +1421,14 @@ function HomeView({ BRAND_PURPLE, files, onUpload, onAction }: any) {
       </h2>
       <div className="flex flex-col gap-4">
         {files.slice(0, 4).map((file: any) => (
-          <FileRow key={file.id} file={file} BRAND_PURPLE={BRAND_PURPLE} onAction={onAction} />
+          <FileRow key={file.id} file={file} BRAND_PURPLE={BRAND_PURPLE} onAction={onAction} onStartSkimSync={onStartSkimSync} />
         ))}
       </div>
     </div>
   );
 }
 
-function FileRow({ file, BRAND_PURPLE, onAction }: any) {
+function FileRow({ file, BRAND_PURPLE, onAction, onStartSkimSync }: any) {
   return (
     <div className="bg-white border border-[#F1F5F9] rounded-[20px] sm:rounded-[24px] p-4 sm:p-5 shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
@@ -1211,7 +1464,10 @@ function FileRow({ file, BRAND_PURPLE, onAction }: any) {
         <div className="hidden sm:block h-8 w-[1px] bg-slate-100" />
         <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <button 
-            onClick={() => onAction(`Entering focus mode...`)} 
+            onClick={() => {
+              onStartSkimSync(file);
+              onAction(`Entering focus mode...`);
+            }}
             className="flex-1 sm:flex-none text-white px-4 sm:px-5 py-2.5 rounded-xl font-bold text-[13px] hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap" 
             style={{ backgroundColor: BRAND_PURPLE }}
           >
