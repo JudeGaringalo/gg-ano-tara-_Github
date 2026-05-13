@@ -113,7 +113,7 @@ export default function Dashboard() {
 
   const handleUpload = () => {
     const newFile: StudyFile = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: Math.random().toString(36).substring(2, 9),
       name: 'New Uploaded Document.pdf',
       date: new Date().toISOString().split('T')[0],
       size: '1.2 MB',
@@ -145,6 +145,43 @@ export default function Dashboard() {
       return matchesSearch && matchesFormat && matchesLoad;
     });
   }, [files, searchQuery, selectedFormats, selectedLoads]);
+
+  // Handle immersive Skim-Sync view to hide sidebar
+  if (activeTab === 'skim-sync' && skimSyncFile) {
+    return (
+      <ReactLenis root options={{ lerp: 0.1, duration: 1.5, smoothWheel: true }}>
+        <style>{`::-webkit-scrollbar { display: none; } * { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
+        <div className="min-h-screen bg-[#F9FAFB] font-sans text-[#0F172A]">
+           {/* Minimal top nav for Skim Sync */}
+           <nav className="sticky top-0 z-40 flex items-center justify-between px-8 py-3 bg-white border-b border-gray-100 shrink-0">
+             <div className="flex items-center gap-6">
+                <img 
+                  src="/images/logo.png" 
+                  alt="Echo Logo" 
+                  className="h-8 w-auto object-contain cursor-pointer" 
+                  style={{filter:'invert(18%) sepia(88%) saturate(4535%) hue-rotate(262deg) brightness(82%) contrast(92%)'}} 
+                />
+                <div className="h-4 w-[1px] bg-slate-200"></div>
+                <button onClick={() => setActiveTab('home')} className="text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors flex items-center gap-2">
+                  <Home size={16} /> Dashboard
+                </button>
+             </div>
+             <div className="flex items-center gap-4">
+                <button className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors">
+                  <User size={16} /> Profile
+                </button>
+                <button onClick={handleLogout} className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-red-500 transition-colors">
+                  <LogOut size={16} /> Logout
+                </button>
+             </div>
+           </nav>
+           <main className="p-6 md:p-8 lg:p-12">
+             <SkimSyncView file={skimSyncFile} onBack={() => setActiveTab('home')} />
+           </main>
+        </div>
+      </ReactLenis>
+    )
+  }
 
   return (
     <ReactLenis root options={{ lerp: 0.1, duration: 1.5, smoothWheel: true }}>
@@ -222,7 +259,6 @@ export default function Dashboard() {
               <nav className="flex flex-col gap-1.5">
                 <SidebarItem icon={<Home size={16}/>} label="Home" active={activeTab === 'home'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('home')} />
                 <SidebarItem icon={<Files size={16}/>} label="All files" active={activeTab === 'files'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('files')} />
-                <SidebarItem icon={<Zap size={16}/>} label="Skim Sync" active={activeTab === 'skim-sync'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('skim-sync')} />
                 <SidebarItem icon={<BrainCircuit size={16}/>} label="Exam Mode" active={activeTab === 'exam'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('exam')} />
               </nav>
             </div>
@@ -252,6 +288,7 @@ export default function Dashboard() {
                           onAction={showToast}
                           showFilters={showFilters}
                           setShowFilters={setShowFilters}
+                          onStartSkimSync={handleStartSkimSync}
                       />
                   )}
                   
@@ -264,13 +301,6 @@ export default function Dashboard() {
                           uploadedFiles={examUploadedFiles}
                           setUploadedFiles={setExamUploadedFiles}
                           onViewBriefs={() => setActiveTab('exam-results')}
-                      />
-                  )}
-
-                  {activeTab === 'skim-sync' && skimSyncFile && (
-                      <SkimSyncView
-                        file={skimSyncFile}
-                        onBack={() => setActiveTab('home')}
                       />
                   )}
 
@@ -294,6 +324,219 @@ export default function Dashboard() {
     </ReactLenis>
   );
 }
+
+// ============================================================================
+// SKIM-SYNC LYRIC UI VIEW
+// ============================================================================
+
+function SkimSyncView({ file, onBack }: any) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  const totalAudioSeconds = 180; // Mock: 3 minutes
+
+  // Mock transcript structured for "Spotify Lyrics" style interaction
+  const transcriptLines = [
+    { text: 'Introduction to Psychology: Psychology is the scientific study of the mind and behavior.', time: 0 },
+    { text: 'It encompasses the biological influences, social pressures, and environmental factors that affect how people think, act, and feel.', time: 8 },
+    { text: 'The field of psychology has evolved significantly since its inception in the late 19th century.', time: 18 },
+    { text: 'Early psychologists like Wilhelm Wundt and William James laid the groundwork for modern psychological research and practice.', time: 26 },
+    { text: 'Key areas of psychology include cognitive psychology, developmental psychology, social psychology, and clinical psychology.', time: 36 },
+    { text: 'Each area focuses on different aspects of human behavior and mental processes.', time: 44 },
+    { text: 'Cognitive psychology examines internal mental processes such as problem solving, memory, and language.', time: 52 },
+    { text: 'This field has been instrumental in understanding how humans perceive, learn, and remember information.', time: 62 },
+    { text: 'The research methods in psychology include experiments, surveys, case studies, and naturalistic observation.', time: 72 },
+    { text: 'Statistical analysis is crucial in psychology research. Psychologists use various statistical methods to draw conclusions.', time: 82 },
+    { text: 'Ethics in psychological research is paramount. Researchers must ensure informed consent and maintain confidentiality.', time: 94 }
+  ];
+
+  // Determine which line is currently active based on audio progress
+  const currentLineIndex = transcriptLines.reduce((currentIndex, line, index) => {
+    const currentSeconds = (progress / 100) * totalAudioSeconds;
+    return currentSeconds >= line.time ? index : currentIndex;
+  }, 0);
+
+  const seekToLine = (seconds: number) => {
+    const nextProgress = Math.min(100, (seconds / totalAudioSeconds) * 100);
+    setProgress(nextProgress);
+    setIsPlaying(true);
+  };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isPlaying) {
+      interval = setInterval(() => {
+        // Adjust progression rate based on mock total length (180s)
+        setProgress((prev) => (prev >= 100 ? 100 : prev + (100 / totalAudioSeconds)));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying]);
+
+  const formatTime = (percent: number) => {
+    const currentSeconds = Math.floor((percent / 100) * totalAudioSeconds);
+    const mins = Math.floor(currentSeconds / 60);
+    const secs = currentSeconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="max-w-[1200px] mx-auto pb-[120px] relative">
+      
+      {/* 1. Header Area */}
+      <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-[28px] md:text-[32px] font-bold tracking-tight text-slate-900 mb-1">
+            {file?.name || 'Introduction to Psychology.pdf'}
+          </h1>
+          <p className="text-slate-400 text-sm font-medium">Interactive Skim-Sync Mode</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-sm transition-colors shadow-sm">
+            <Zap size={16} />
+            Switch to Exam Mode
+          </button>
+        </div>
+      </header>
+
+      {/* 2. Main Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
+        
+        {/* Left Col: "Lyrics" Document View */}
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-3xl p-8 md:p-12 shadow-sm h-[600px] overflow-y-auto scroll-smooth">
+          <div className="space-y-8">
+            {transcriptLines.map((line, index) => {
+               const isActive = index === currentLineIndex;
+               return (
+                 <button
+                   key={index}
+                   onClick={() => seekToLine(line.time)}
+                   className={`block w-full text-left transition-all duration-500 ease-out cursor-pointer ${
+                     isActive
+                       ? 'text-slate-900 font-black opacity-100 scale-100'
+                       : 'text-slate-300 font-bold opacity-70 hover:text-slate-400 hover:opacity-100'
+                   }`}
+                 >
+                   <p className="text-2xl md:text-3xl lg:text-4xl leading-snug">
+                     {line.text}
+                   </p>
+                 </button>
+               );
+            })}
+          </div>
+        </div>
+
+        {/* Right Col: Info Cards */}
+        <div className="space-y-6">
+          {/* Cognitive Load */}
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-6 text-lg">
+              <BrainCircuit size={20} /> Cognitive Load
+            </h3>
+            <div className="mb-6">
+              <div className="flex justify-between text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">
+                <span>Current Load</span>
+                <span className="text-slate-800">65%</span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div className="bg-orange-500 h-2.5 rounded-full transition-all duration-500" style={{ width: '65%' }}></div>
+              </div>
+            </div>
+            <div className="space-y-4 border-t border-slate-100 pt-5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-slate-500 font-medium">
+                  <Clock size={16} className="text-slate-400" /> Study Time
+                </span>
+                <span className="text-slate-800 font-bold">{formatTime(progress)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-slate-500 font-medium">
+                  <CheckCircle2 size={16} className="text-slate-400" /> Progress
+                </span>
+                <span className="text-slate-800 font-bold">{Math.floor(progress)}%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Document Info */}
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+            <h3 className="font-bold text-slate-800 mb-6 text-lg">Document Info</h3>
+            <div className="space-y-4 text-sm text-slate-500 mb-8">
+              <div className="flex items-center justify-between">
+                <span>Format</span><span className="font-bold text-slate-800">{file?.format || 'PDF'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Pages</span><span className="font-bold text-slate-800">12</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Complexity</span><span className="font-bold text-slate-800">{file?.load || 'Medium'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Est. Duration</span><span className="font-bold text-slate-800">{file?.duration || '45 min'}</span>
+              </div>
+            </div>
+            <button className="w-full flex items-center justify-center gap-2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm transition-colors">
+              <Download size={16} /> Download Audio (MP3)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Centered Media Player (Fixed Bottom) */}
+      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] z-50">
+        <div className="max-w-[1200px] mx-auto px-6 py-4 flex flex-col items-center justify-center gap-2 relative">
+           
+           {/* Progress Line */}
+           <div className="flex items-center w-full max-w-2xl gap-4">
+             <span className="text-[11px] font-bold text-slate-400 w-8 text-right tabular-nums">{formatTime(progress)}</span>
+             <div className="flex-1 bg-slate-100 h-1.5 rounded-full overflow-hidden cursor-pointer relative group">
+               <div className="bg-[#0F172A] h-full rounded-full relative transition-all duration-300" style={{ width: `${progress}%` }}></div>
+             </div>
+             <span className="text-[11px] font-bold text-slate-400 w-8 tabular-nums">3:00</span>
+           </div>
+
+           {/* Controls Row */}
+           <div className="flex items-center justify-between w-full max-w-2xl mt-1">
+             
+             {/* Empty spacer for true centering of play buttons */}
+             <div className="w-24 flex items-center justify-start text-slate-400 opacity-0 md:opacity-100">
+                <Shuffle size={18} className="hover:text-slate-600 transition-colors cursor-pointer hidden md:block" />
+             </div>
+             
+             {/* Center Play Controls */}
+             <div className="flex items-center gap-6">
+                <button className="text-slate-400 hover:text-slate-800 transition-colors cursor-pointer">
+                  <SkipBack size={22} className="fill-current" />
+                </button>
+                <button 
+                  onClick={() => setIsPlaying(!isPlaying)} 
+                  className="w-12 h-12 bg-[#0F172A] hover:bg-slate-800 rounded-full flex items-center justify-center text-white transition-transform hover:scale-105 shadow-md"
+                >
+                  {isPlaying ? <Pause size={20} fill="white" /> : <Play size={20} fill="white" className="ml-1" />}
+                </button>
+                <button className="text-slate-400 hover:text-slate-800 transition-colors cursor-pointer">
+                  <SkipForward size={22} className="fill-current" />
+                </button>
+             </div>
+             
+             {/* Right Volume Control */}
+             <div className="flex items-center justify-end gap-3 w-24">
+                <Volume2 size={18} className="text-slate-400 hover:text-slate-700 transition-colors cursor-pointer" />
+                <div className="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden hidden md:block cursor-pointer">
+                   <div className="bg-slate-300 h-full rounded-full" style={{width: '80%'}}></div>
+                </div>
+             </div>
+           </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// OTHER SUB-COMPONENTS
+// ============================================================================
 
 function SidebarItem({ icon, label, active, brandColor, onClick }: any) {
   return (
@@ -356,7 +599,6 @@ function ExamView({ BRAND_PURPLE, files, selectedFiles, setSelectedFiles, upload
                 </div>
             </header>
 
-            {/* Compact Upload Box */}
             <button onClick={handleFileUpload} className="w-full border-2 border-dashed border-[#E2E8F0] rounded-[24px] sm:rounded-[32px] bg-white p-5 sm:p-6 md:p-8 flex flex-col items-center justify-center mb-12 transition-all hover:border-[#581DC680] group shadow-sm">
               <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-[64px] md:h-[64px] bg-[#F1F5F9] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform text-[#475569] group-hover:text-[#581DC6]"><Upload size={24} className="sm:hidden" /><Upload size={28} className="hidden sm:block" /></div>
               <h3 className="text-[18px] sm:text-[20px] font-bold mb-1 text-center">Upload Study Materials</h3>
@@ -364,7 +606,6 @@ function ExamView({ BRAND_PURPLE, files, selectedFiles, setSelectedFiles, upload
               <div className="bg-[#0F172A] text-white px-6 sm:px-8 py-2.5 rounded-2xl font-bold text-[13px] sm:text-[14px] group-hover:bg-[#581DC6] transition-colors shadow-lg">Choose Files</div>
             </button>
 
-            {/* Available Documents */}
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-[22px] font-bold flex items-center gap-2 text-slate-900">
                     <Clock size={20} className="text-slate-400" />
@@ -487,156 +728,15 @@ const generateHighlights = (file: StudyFile) => {
     ];
 };
 
-function ExamHighlightsView({ BRAND_PURPLE, selectedFiles, examModeEnabled, setExamModeEnabled, onBack, onProceed }: any) {
-    const allHighlights = selectedFiles.flatMap((file: StudyFile) => {
-        const fileHighlights = generateHighlights(file);
-        return fileHighlights.map((h: any) => ({ ...h, fileId: file.id, fileName: file.name }));
-    });
-
-    const filteredHighlights = examModeEnabled 
-        ? allHighlights.filter((h: any) => h.type === 'definition' || h.type === 'question')
-        : allHighlights;
-
-    return (
-      <div className="w-full max-w-[1400px] mx-auto">
-            <header className="mb-8">
-                <div className="flex items-center gap-4 mb-6">
-                    <button
-                        onClick={onBack}
-                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-slate-600"
-                    >
-                        ← Back
-                    </button>
-                    <div className="flex-1">
-                        <h1 className="text-[32px] font-bold tracking-tight text-slate-900 flex items-center gap-3">
-                            <Sparkles className="text-purple-500" size={32} />
-                            Exam Priority Highlights
-                        </h1>
-                        <p className="text-[#64748B] text-lg mt-2">
-                            From {selectedFiles.length} {selectedFiles.length === 1 ? 'document' : 'documents'}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-4 bg-purple-50 border border-purple-100 rounded-2xl px-6 py-4 w-fit">
-                    <div className="flex items-center gap-3 flex-1">
-                        <div className={`w-3 h-3 rounded-full transition-colors ${examModeEnabled ? 'bg-purple-500' : 'bg-slate-300'}`} />
-                        <div>
-                            <p className="text-[10px] font-black uppercase text-purple-700 tracking-wider">Mode</p>
-                            <p className="text-sm font-bold text-slate-700">{examModeEnabled ? 'Exam Mode' : 'Full Document'}</p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => setExamModeEnabled(!examModeEnabled)}
-                        className={`ml-4 px-4 py-2 rounded-lg font-bold text-sm transition-all ${
-                            examModeEnabled
-                                ? 'bg-purple-600 text-white hover:bg-purple-700'
-                                : 'bg-white text-purple-600 border border-purple-200 hover:bg-purple-50'
-                        }`}
-                    >
-                        {examModeEnabled ? 'Disable' : 'Enable'}
-                    </button>
-                </div>
-            </header>
-
-            <div className="bg-white border border-slate-100 rounded-[28px] p-6 shadow-sm">
-                <div className="mb-6">
-                    <h2 className="text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
-                        <ListFilter size={20} className="text-slate-400" />
-                        {examModeEnabled ? 'Exam Mode Only' : 'All Content'}
-                    </h2>
-                    <p className="text-xs text-slate-500">
-                        {filteredHighlights.length} highlights extracted
-                    </p>
-                </div>
-
-                <div className="space-y-3">
-                    {filteredHighlights.length > 0 ? (
-                        filteredHighlights.map((item: any, i: number) => (
-                            <div key={i} className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 group">
-                                <div className={`w-10 h-10 rounded-xl shrink-0 flex items-center justify-center font-bold text-sm ${
-                                    item.type === 'definition' ? 'bg-blue-50 text-blue-600' : 
-                                    item.type === 'question' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'
-                                }`}>
-                                    {item.type === 'definition' ? 'D' : 
-                                     item.type === 'question' ? 'Q' : 'S'}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
-                                        <h4 className="font-bold text-[14px] text-slate-800">{item.title}</h4>
-                                        <div className="flex items-center gap-2">
-                                            <span className={`text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${
-                                                item.type === 'definition' ? 'text-blue-600' :
-                                                item.type === 'question' ? 'text-rose-600' : 'text-emerald-600'
-                                            }`}>{item.type}</span>
-                                            <span className="text-[9px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{item.fileName}</span>
-                                        </div>
-                                    </div>
-                                    <p className="text-slate-600 text-sm leading-relaxed">{item.content}</p>
-                                </div>
-                                <button className="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-[#581DC6] transition-all shrink-0">
-                                    <ChevronRight size={20} />
-                                </button>
-                            </div>
-                        ))
-                    ) : (
-                        <p className="text-center text-slate-400 py-12 text-sm">No highlights found</p>
-                    )}
-                </div>
-            </div>
-
-            <div className="mt-12">
-                <h3 className="text-[22px] font-bold mb-6 flex items-center gap-2 text-slate-900">
-                    <Files size={20} className="text-slate-400" />
-                    Selected Documents ({selectedFiles.length})
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {selectedFiles.map((file: StudyFile) => (
-                        <div key={file.id} className="bg-white border border-slate-100 rounded-[20px] p-4 shadow-sm">
-                            <div className="flex items-start gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-purple-50 text-[#581DC6] flex items-center justify-center shrink-0 mt-0.5">
-                                    <FileText size={18} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="font-bold text-sm text-slate-800 truncate">{file.name}</h4>
-                                    <p className="text-xs text-slate-500 mt-1">{file.format} • {file.duration}</p>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <div className="mt-12 flex gap-4 justify-center">
-                <button
-                    onClick={onBack}
-                    className="px-8 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all"
-                >
-                    Back
-                </button>
-                <button
-                    onClick={onProceed}
-                    className="px-8 py-3 bg-[#581DC6] text-white rounded-xl font-bold hover:bg-opacity-90 transition-all shadow-md flex items-center gap-2"
-                >
-                    <Sparkles size={18} />
-                    Proceed to Skim Sync
-                </button>
-            </div>
-        </div>
-    );
-}
-
 function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCards, confidenceRating, setConfidenceRating, onBack, onAction }: any) {
     const [showCheatSheetExport, setShowCheatSheetExport] = useState(false);
     const [currentCardIndex, setCurrentCardIndex] = useState(0);
     
-    // Get all highlights for flashcards
     const allHighlights = selectedFiles.flatMap((file: StudyFile) => {
         const fileHighlights = generateHighlights(file);
         return fileHighlights.filter((h: any) => h.type === 'definition').map((h: any) => ({ ...h, fileId: file.id, fileName: file.name }));
     });
 
-    // Keyboard support for flashcards
     useEffect(() => {
         const handleKeydown = (e: KeyboardEvent) => {
             if (e.code === 'Space') {
@@ -666,7 +766,6 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
     };
 
     const handleExportCheatSheet = () => {
-        // Generate text-based cheat sheet and download
         const cheatSheetContent = allHighlights
             .map((h: any) => `${h.title}\n${'-'.repeat(h.title.length)}\n${h.content}`)
             .join('\n\n');
@@ -695,11 +794,6 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
         }
     };
 
-    // Calculate metrics (mocked from selected files)
-    const totalPages = selectedFiles.length * 20; // Mock: 20 pages per file
-    const timeSavedMinutes = Math.round((totalPages / 10) * 2);
-    const keywordsCount = allHighlights.length;
-
     return (
       <div className="w-full max-w-[1400px] mx-auto">
             <header className="mb-12">
@@ -719,7 +813,6 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
                 </div>
             </header>
 
-            {/* Hero Fact Flashcards - Quizlet Style */}
             <div className="mb-12">
                 <h2 className="text-[24px] font-bold mb-2 text-slate-900">
                     Learn with Flashcards
@@ -728,9 +821,7 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
                 
                 {allHighlights.length > 0 ? (
                     <div>
-                        {/* Flashcard Container */}
                         <div className="flex flex-col items-center gap-8 mb-8">
-                            {/* Progress Bar */}
                             <div className="w-full max-w-full sm:max-w-2xl">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-bold text-slate-600">
@@ -748,7 +839,6 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
                                 </div>
                             </div>
 
-                            {/* Main Flashcard */}
                             <motion.div
                               onClick={() => toggleFlip(currentCardIndex)}
                               className="w-full max-w-full sm:max-w-3xl min-h-[18rem] sm:min-h-[22rem] lg:min-h-[26rem] rounded-2xl sm:rounded-3xl shadow-2xl cursor-pointer perspective"
@@ -768,14 +858,12 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
                                     <div className={`flex flex-col items-center justify-center w-full ${
                                         flippedCards.has(currentCardIndex) ? 'text-slate-900' : 'text-white'
                                     }`}>
-                                        {/* Label */}
                                         <div className={`text-xs md:text-sm font-bold uppercase tracking-widest mb-6 ${
                                             flippedCards.has(currentCardIndex) ? 'text-blue-600' : 'text-blue-300'
                                         }`}>
                                             {flippedCards.has(currentCardIndex) ? 'Definition' : 'Term'}
                                         </div>
                                         
-                                        {/* Content */}
                                         <div className={`max-w-full text-balance text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight line-clamp-4 sm:line-clamp-5 break-words ${
                                             flippedCards.has(currentCardIndex) ? 'text-slate-800' : 'text-white'
                                         }`}>
@@ -785,7 +873,6 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
                                             }
                                         </div>
 
-                                        {/* Flip Hint */}
                                         {!flippedCards.has(currentCardIndex) && (
                                             <div className="mt-auto pt-6 text-xs md:text-sm text-blue-200 opacity-70">
                                                 Click card to reveal
@@ -795,7 +882,6 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
                                 </motion.div>
                             </motion.div>
 
-                            {/* Navigation Controls */}
                             <div className="w-full max-w-full sm:max-w-3xl flex flex-col sm:flex-row items-center justify-between gap-4">
                                 <button
                                     onClick={() => setCurrentCardIndex(Math.max(0, currentCardIndex - 1))}
@@ -836,7 +922,6 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
                 )}
             </div>
 
-            {/* Exam Reviewer Export */}
             <div className="mb-12 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 md:p-8">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
@@ -854,7 +939,6 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
                 </div>
             </div>
 
-            {/* Confidence Meter */}
             <div className="mb-12">
                 <h2 className="text-[24px] font-bold mb-6 text-slate-900">
                     How Confident Do You Feel?
@@ -901,319 +985,8 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
                     )}
                 </div>
             </div>
-
-            {/* Focus Visualizer */}
-            <div className="mb-12">
-                <h2 className="text-[24px] font-bold mb-6 text-slate-900">
-                    Your Session Summary
-                </h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-                    <motion.div
-                    className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 md:p-8 shadow-sm"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                    >
-                        <div className="text-4xl font-bold text-purple-600 mb-2">{timeSavedMinutes}</div>
-                        <div className="text-sm text-slate-600 mb-4">Minutes Saved</div>
-                        <p className="text-xs text-slate-500 break-words">You processed {totalPages} pages efficiently with Skim Sync</p>
-                    </motion.div>
-
-                    <motion.div
-                      className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 md:p-8 shadow-sm"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                    >
-                        <div className="text-4xl font-bold text-blue-600 mb-2">{keywordsCount}</div>
-                        <div className="text-sm text-slate-600 mb-4">Key Definitions</div>
-                        <p className="text-xs text-slate-500 break-words">Critical terms extracted and ready to master</p>
-                    </motion.div>
-
-                    <motion.div
-                      className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 md:p-8 shadow-sm"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                    >
-                        <div className="text-4xl font-bold text-emerald-600 mb-2">{selectedFiles.length}</div>
-                        <div className="text-sm text-slate-600 mb-4">Documents Analyzed</div>
-                        <p className="text-xs text-slate-500 break-words">Successfully processed and extracted</p>
-                    </motion.div>
-                </div>
-            </div>
-
-            {/* Keywords Cloud */}
-            <div className="bg-slate-50 border border-slate-200 rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 md:p-8 mb-12">
-                <h3 className="text-lg font-bold mb-6 text-slate-900">Keywords Mastered</h3>
-                <div className="flex flex-wrap gap-3">
-                    {allHighlights.slice(0, 12).map((highlight: any, idx: number) => (
-                        <motion.span
-                            key={idx}
-                      className="px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-medium text-slate-700 hover:border-purple-400 transition-colors cursor-pointer max-w-full break-words"
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: idx * 0.05 }}
-                        >
-                            {highlight.title}
-                        </motion.span>
-                    ))}
-                </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-4 justify-center mb-12">
-                <button
-                    onClick={onBack}
-                    className="px-8 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all"
-                >
-                    Back to Highlights
-                </button>
-                <button
-                    className="px-8 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-all shadow-md flex items-center gap-2"
-                    onClick={() => onAction("Ready to start the next chapter!")}
-                >
-                    <ChevronRight size={18} />
-                    Start Next Chapter
-                </button>
-            </div>
         </div>
     );
-}
-
-function SkimSyncView({ file, onBack }: any) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [language, setLanguage] = useState<'English' | 'Filipino'>('English');
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isPlaying) {
-      interval = setInterval(() => {
-        setProgress((prev) => (prev >= 100 ? 0 : prev + 0.5));
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isPlaying]);
-
-  const formatTime = (percent: number) => {
-    const totalSeconds = 180;
-    const currentSeconds = Math.floor((percent / 100) * totalSeconds);
-    const mins = Math.floor(currentSeconds / 60);
-    const secs = currentSeconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  return (
-    <div className="max-w-[1200px] mx-auto pb-28 relative min-h-[calc(100vh-100px)]">
-      <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-[28px] font-bold tracking-tight text-slate-900 mb-1">
-            {file.name}
-          </h1>
-          <p className="text-slate-400 text-sm font-medium">Interactive Skim-Sync Mode</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={onBack}
-            className="px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            Exit
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-sm transition-colors">
-            <Zap size={16} />
-            Switch to Exam Mode
-          </button>
-        </div>
-      </header>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
-        <div className="lg:col-span-2 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 border border-slate-700 rounded-2xl p-8 md:p-12 shadow-lg h-[600px] overflow-y-auto flex flex-col items-center justify-center relative">
-          <div className="space-y-8 text-center flex flex-col items-center w-full justify-center h-full">
-            {/* Calculate current section */}
-            {progress >= 0 && progress < 16 && (
-              <>
-                <p className="text-4xl md:text-6xl font-bold leading-tight text-white">
-                  Introduction to Psychology
-                </p>
-                <p className="text-2xl md:text-3xl font-semibold leading-snug text-white/70">
-                  Psychology is the scientific study of the mind and behavior
-                </p>
-                <p className="text-xl md:text-2xl leading-snug text-white/40 mt-8">
-                  Evolution of the Field
-                </p>
-              </>
-            )}
-
-            {progress >= 16 && progress < 32 && (
-              <>
-                <p className="text-4xl md:text-6xl font-bold leading-tight text-white">
-                  Evolution of the Field
-                </p>
-                <p className="text-2xl md:text-3xl font-semibold leading-snug text-white/70">
-                  From Wilhelm Wundt to modern practice
-                </p>
-                <p className="text-xl md:text-2xl leading-snug text-white/40 mt-8">
-                  Key Areas
-                </p>
-              </>
-            )}
-
-            {progress >= 32 && progress < 48 && (
-              <>
-                <p className="text-4xl md:text-6xl font-bold leading-tight text-white">
-                  Key Areas
-                </p>
-                <p className="text-2xl md:text-3xl font-semibold leading-snug text-white/70">
-                  Cognitive, developmental, social, and clinical
-                </p>
-                <p className="text-xl md:text-2xl leading-snug text-white/40 mt-8">
-                  Cognitive Psychology
-                </p>
-              </>
-            )}
-
-            {progress >= 48 && progress < 64 && (
-              <>
-                <p className="text-4xl md:text-6xl font-bold leading-tight text-white">
-                  Cognitive Psychology
-                </p>
-                <p className="text-2xl md:text-3xl font-semibold leading-snug text-white/70">
-                  Understanding how we think, learn, and remember
-                </p>
-                <p className="text-xl md:text-2xl leading-snug text-white/40 mt-8">
-                  Research Methods
-                </p>
-              </>
-            )}
-
-            {progress >= 64 && progress < 80 && (
-              <>
-                <p className="text-4xl md:text-6xl font-bold leading-tight text-white">
-                  Research Methods
-                </p>
-                <p className="text-2xl md:text-3xl font-semibold leading-snug text-white/70">
-                  Experiments, surveys, and observations
-                </p>
-                <p className="text-xl md:text-2xl leading-snug text-white/40 mt-8">
-                  Ethics & Standards
-                </p>
-              </>
-            )}
-
-            {progress >= 80 && (
-              <>
-                <p className="text-4xl md:text-6xl font-bold leading-tight text-white">
-                  Ethics & Standards
-                </p>
-                <p className="text-2xl md:text-3xl font-semibold leading-snug text-white/70">
-                  Informed consent, confidentiality, and protection
-                </p>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-            <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-6">
-              <BrainCircuit size={18} /> Cognitive Load
-            </h3>
-            <div className="mb-6">
-              <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
-                <span>Current Load</span>
-                <span className="text-slate-800">65%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                <div className="bg-orange-500 h-2.5 rounded-full" style={{ width: '65%' }}></div>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                <Clock size={14} className="text-slate-400" />
-                Study Time: <span className="text-slate-800 font-bold ml-1">{formatTime(progress)}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                <CheckCircle2 size={14} className="text-slate-400" />
-                Progress: <span className="text-slate-800 font-bold ml-1">{Math.floor(progress)}%</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-            <h3 className="font-bold text-slate-800 mb-6">Document Info</h3>
-            <div className="space-y-4 text-sm text-slate-500 mb-8">
-              <div className="flex items-center gap-2">
-                Format: <span className="font-bold text-slate-800">PDF</span>
-              </div>
-              <div className="flex items-center gap-2">
-                Pages: <span className="font-bold text-slate-800">12</span>
-              </div>
-              <div className="flex items-center gap-2">
-                Complexity: <span className="font-bold text-slate-800">Medium</span>
-              </div>
-              <div className="flex items-center gap-2">
-                Est. Duration: <span className="font-bold text-slate-800">45 min</span>
-              </div>
-              <div className="flex flex-col gap-2">
-                <label htmlFor="language" className="text-xs font-bold uppercase tracking-wide text-slate-400">Language</label>
-                <select
-                  id="language"
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value as 'English' | 'Filipino')}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#581DC640]"
-                >
-                  <option value="English">English</option>
-                  <option value="Filipino">Filipino</option>
-                </select>
-              </div>
-            </div>
-            <button className="w-full flex items-center justify-center gap-2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-sm transition-colors">
-              <Download size={16} />
-              Download Audio (MP3)
-            </button>
-          </div>
-
-        </div>
-      </div>
-
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 bg-white border-t border-slate-200 px-6 py-5 shadow-[0_-4px_20px_rgba(0,0,0,0.02)] z-50 w-[calc(100%-32px)] max-w-[680px] rounded-t-3xl">
-        <div className="mx-auto max-w-[620px] space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-[10px] font-bold text-slate-400 w-10 text-left">{formatTime(progress)}</span>
-            <div className="flex-1 bg-slate-100 h-1.5 rounded-full overflow-hidden mx-2">
-              <div className="bg-slate-800 h-full rounded-full" style={{ width: `${progress}%` }} />
-            </div>
-            <span className="text-[10px] font-bold text-slate-400 w-10 text-right">3:00</span>
-          </div>
-
-          <div className="flex items-center justify-center gap-6">
-            <button className="text-slate-400 hover:text-slate-700 transition-colors p-2 rounded-full hover:bg-slate-100">
-              <SkipBack size={18} />
-            </button>
-            <button 
-              onClick={() => setIsPlaying(!isPlaying)}
-              className="w-12 h-12 bg-[#0F172A] hover:bg-slate-800 rounded-full flex items-center justify-center text-white transition-colors shadow-lg hover:scale-105"
-            >
-              {isPlaying ? <Pause size={18} fill="white" /> : <Play size={18} fill="white" />}
-            </button>
-            <button className="text-slate-400 hover:text-slate-700 transition-colors p-2 rounded-full hover:bg-slate-100">
-              <SkipForward size={18} />
-            </button>
-          </div>
-
-          <div className="flex items-center justify-center gap-3">
-            <Volume2 size={16} className="text-slate-400" />
-            <div className="w-24 bg-slate-100 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-slate-300 h-full rounded-full" style={{ width: '80%' }}></div>
-            </div>
-            <span className="text-[10px] font-bold text-slate-400">80%</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function FilesView({ 
@@ -1227,7 +1000,8 @@ function FilesView({
   setSelectedLoads, 
   onAction,
   showFilters,
-  setShowFilters 
+  setShowFilters,
+  onStartSkimSync 
 }: any) {
   const formats = ["PDF", "PPTX", "DOCX", "TXT"];
   const loads = ["Low", "Medium", "High"];
@@ -1323,30 +1097,21 @@ function FilesView({
       <div className="space-y-4 sm:hidden">
         {files.map((file: any) => (
           <div key={file.id} className="bg-white border border-slate-100 rounded-[22px] shadow-sm p-4">
-            <div className="flex items-start gap-3 min-w-0">
+            <div className="flex items-start gap-3 min-w-0 mb-3">
               <div className="p-2.5 bg-purple-50 text-[#581DC6] rounded-xl shrink-0">
                 <FileText size={18} />
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="font-bold text-[15px] leading-snug text-slate-800 break-words line-clamp-2 mb-2">{file.name}</h3>
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 mb-3">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
                   <span className="bg-[#F1F5F9] px-2.5 py-1 rounded-md border border-slate-200 text-[#64748B] font-bold uppercase">{file.format}</span>
-                  <span className="whitespace-nowrap">{file.date}</span>
-                  <span className="whitespace-nowrap">{file.size}</span>
-                  <span className="whitespace-nowrap text-[#581DC6]">{file.duration}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <LoadBadge load={file.load} />
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => onAction(`Opening ${file.name}...`)} className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
-                      <ExternalLink size={16} />
-                    </button>
-                    <button className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
-                      <MoreVertical size={16} />
-                    </button>
-                  </div>
+                  <span className="whitespace-nowrap">{file.duration}</span>
                 </div>
               </div>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+                <LoadBadge load={file.load} />
+                <button onClick={() => onStartSkimSync(file)} className="text-white px-4 py-2 rounded-lg font-bold text-[12px] bg-[#581DC6] hover:opacity-90 transition-opacity">Skim-Sync</button>
             </div>
           </div>
         ))}
@@ -1377,7 +1142,7 @@ function FilesView({
                 <td className="px-4 sm:px-6 py-4"><LoadBadge load={file.load} /></td>
                 <td className="px-4 sm:px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => onAction(`Opening ${file.name}...`)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"><ExternalLink size={16}/></button>
+                    <button onClick={() => onStartSkimSync(file)} className="text-white px-4 py-1.5 rounded-lg font-bold text-[12px] bg-[#581DC6] hover:opacity-90 transition-opacity flex items-center gap-1"><Zap size={14}/> Skim-Sync</button>
                     <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"><MoreVertical size={16}/></button>
                   </div>
                 </td>
