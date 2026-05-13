@@ -1,14 +1,9 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from "@/app/lib/supabase/client";
 import { 
-<<<<<<< Updated upstream
-  Upload, FileText, Clock, Home, BrainCircuit, LogOut, Files,
-  Search, ExternalLink, CheckCircle2, X, User, AlertCircle, 
-  CreditCard, Download, BarChart3, Zap
-=======
   Upload, 
   FileText, 
   Clock, 
@@ -32,12 +27,13 @@ import {
   Timer,
   ListFilter,
   AlertCircle,
-  Download
->>>>>>> Stashed changes
+  Download,
+  CreditCard,
+  BarChart3,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ReactLenis, useLenis } from '@studio-freight/react-lenis';
-import PostBriefView from '@/app/components/post-brief-component';
 
 type TabType = 'home' | 'files' | 'exam' | 'exam-results';
 
@@ -62,6 +58,9 @@ export default function Dashboard() {
   const router = useRouter();
   const supabase = createClient();
   const lenis = useLenis();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const BRAND_PURPLE = "#581DC6";
+
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [files, setFiles] = useState<StudyFile[]>(INITIAL_FILES);
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,9 +74,6 @@ export default function Dashboard() {
   const [examUploadedFiles, setExamUploadedFiles] = useState<StudyFile[]>([]);
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
   const [confidenceRating, setConfidenceRating] = useState<number | null>(null);
-  
-<<<<<<< Updated upstream
-  const BRAND_PURPLE = "#581DC6";
 
   useEffect(() => {
     const checkUser = async () => {
@@ -89,24 +85,18 @@ export default function Dashboard() {
     checkUser();
   }, [router, supabase]);
 
+  // Scroll to top when tab changes
   useEffect(() => {
     if (lenis) {
       lenis.scrollTo(0, { immediate: true });
-    } else {
-      window.scrollTo(0, 0);
-=======
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const BRAND_PURPLE = "#581DC6";
-
-  // Scroll to top when tab changes
-  useEffect(() => {
-    if (scrollContainerRef.current) {
+    } else if (scrollContainerRef.current) {
       requestAnimationFrame(() => {
         if (scrollContainerRef.current) {
           scrollContainerRef.current.scrollTo(0, 0);
         }
       });
->>>>>>> Stashed changes
+    } else {
+      window.scrollTo(0, 0);
     }
   }, [activeTab, lenis]);
 
@@ -146,142 +136,20 @@ export default function Dashboard() {
   }, [files, searchQuery, selectedFormats, selectedLoads]);
 
   return (
-<<<<<<< Updated upstream
     <ReactLenis root options={{ lerp: 0.1, duration: 1.5, smoothWheel: true }}>
       <style>{`::-webkit-scrollbar { display: none; } * { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
       <div className="min-h-screen bg-[#F9FAFB] font-sans text-[#0F172A] flex flex-col relative">
         <AnimatePresence>
           {toast && (
-=======
-    <div className="min-h-screen bg-[#F9FAFB] font-sans text-[#0F172A] flex flex-col relative">
-      <AnimatePresence>
-        {toast && (
-          <motion.div 
-            initial={{ opacity: 0, y: 50 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed bottom-8 right-8 z-50 flex items-center gap-3 bg-[#0F172A] text-white px-6 py-4 rounded-2xl shadow-2xl border border-white/10"
-          >
-            <CheckCircle2 size={20} className="text-green-400" />
-            <span className="font-bold text-sm">{toast.message}</span>
-            <button onClick={() => setToast(null)} className="ml-4 text-slate-400 hover:text-white"><X size={16}/></button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <nav className="z-30 flex items-center justify-between px-8 py-3 bg-white border-b border-gray-100 shrink-0">
-        <div className="flex items-center">
-          <img src="/images/logo.png" alt="Echo Logo" className="h-10 md:h-10 w-auto object-contain cursor-pointer mr-2" style={{filter:'invert(18%) sepia(88%) saturate(4535%) hue-rotate(262deg) brightness(82%) contrast(92%)'}} />
-        </div>
-
-        <div className="relative">
-          <button 
-            onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs ring-2 ring-transparent hover:ring-purple-100 transition-all cursor-pointer shadow-sm active:scale-95" 
-            style={{ backgroundColor: BRAND_PURPLE }}
-          >
-            TM
-          </button>
-
-          <AnimatePresence>
-            {isProfileOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setIsProfileOpen(false)} />
-                <motion.div 
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute right-0 mt-3 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-20 overflow-hidden"
-                >
-                  <div className="px-4 py-3 border-b border-slate-50 mb-1 bg-slate-50/50">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Signed in as</p>
-                    <p className="text-xs font-bold text-slate-700 mt-0.5 truncate">Trisha Mostoles</p>
-                  </div>
-                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors">
-                    <User size={16} className="text-slate-400" />
-                    <span className="font-medium">My Profile</span>
-                  </button>
-                  <button 
-                    onClick={() => { showToast("Logging out...", 'info'); setIsProfileOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:bg-red-50 transition-colors border-t border-slate-50"
-                  >
-                    <LogOut size={16} />
-                    <span className="font-bold">Logout</span>
-                  </button>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
-        </div>
-      </nav>
-
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="w-64 bg-white border-r border-gray-100 flex flex-col p-4 shrink-0">
-          <div className="px-2">
-            <h2 className="text-[10px] font-bold uppercase tracking-wider mb-4" style={{ color: BRAND_PURPLE }}>Dashboard</h2>
-            <nav className="space-y-1">
-              <SidebarItem icon={<Home size={18}/>} label="Home" active={activeTab === 'home'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('home')} />
-              <SidebarItem icon={<Files size={18}/>} label="All Files" active={activeTab === 'files'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('files')} />
-              <SidebarItem icon={<BrainCircuit size={18}/>} label="Exam Mode" active={activeTab === 'exam'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('exam')} />
-            </nav>
-          </div>
-        </aside>
-
-        <main className="flex-1 overflow-y-auto p-12 bg-[#F9FAFB]" ref={scrollContainerRef}>
-          <AnimatePresence mode="wait">
->>>>>>> Stashed changes
             <motion.div 
               initial={{ opacity: 0, y: 50 }} 
               animate={{ opacity: 1, y: 0 }} 
               exit={{ opacity: 0, scale: 0.95 }}
               className="fixed bottom-8 right-8 z-50 flex items-center gap-3 bg-[#0F172A] text-white px-6 py-4 rounded-2xl shadow-2xl border border-white/10"
             >
-<<<<<<< Updated upstream
               <CheckCircle2 size={20} className="text-green-400" />
               <span className="font-bold text-sm">{toast.message}</span>
               <button onClick={() => setToast(null)} className="ml-4 text-slate-400 hover:text-white"><X size={16}/></button>
-=======
-                {activeTab === 'home' && <HomeView BRAND_PURPLE={BRAND_PURPLE} files={files} onUpload={handleUpload} onAction={showToast} />}
-                {activeTab === 'files' && (
-                    <FilesView 
-                        BRAND_PURPLE={BRAND_PURPLE} 
-                        files={filteredFiles} 
-                        searchQuery={searchQuery} 
-                        setSearchQuery={setSearchQuery} 
-                        selectedFormats={selectedFormats}
-                        setSelectedFormats={setSelectedFormats}
-                        selectedLoads={selectedLoads}
-                        setSelectedLoads={setSelectedLoads}
-                        onAction={showToast}
-                        showFilters={showFilters}
-                        setShowFilters={setShowFilters}
-                    />
-                )}
-                {activeTab === 'exam' && (
-                    <ExamView 
-                        BRAND_PURPLE={BRAND_PURPLE} 
-                        files={files}
-                        selectedFiles={examSelectedFiles}
-                        setSelectedFiles={setExamSelectedFiles}
-                        uploadedFiles={examUploadedFiles}
-                        setUploadedFiles={setExamUploadedFiles}
-                        onViewBriefs={() => setActiveTab('exam-results')}
-                    />
-                )}
-
-                {activeTab === 'exam-results' && (
-                    <PostBriefView
-                        BRAND_PURPLE={BRAND_PURPLE}
-                        selectedFiles={examSelectedFiles}
-                        flippedCards={flippedCards}
-                        setFlippedCards={setFlippedCards}
-                        confidenceRating={confidenceRating}
-                        setConfidenceRating={setConfidenceRating}
-                        onBack={() => setActiveTab('exam')}
-                        onAction={showToast}
-                    />
-                )}
->>>>>>> Stashed changes
             </motion.div>
           )}
         </AnimatePresence>
@@ -317,7 +185,7 @@ export default function Dashboard() {
                   >
                     <div className="px-4 py-3 border-b border-slate-50 mb-1 bg-slate-50/50">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Signed in as</p>
-                      <p className="text-xs font-bold text-slate-700 mt-0.5 truncate">User</p>
+                      <p className="text-xs font-bold text-slate-700 mt-0.5 truncate">Trisha Mostoles</p>
                     </div>
                     <button onClick={() => router.push('/profile')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors">
                       <User size={16} className="text-slate-400" />
@@ -337,7 +205,7 @@ export default function Dashboard() {
           </div>
         </nav>
 
-        <div className="flex flex-col md:flex-row flex-1">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
           <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-gray-100 flex flex-col p-4 shrink-0 overflow-x-auto md:sticky md:top-[65px] md:h-[calc(100vh-65px)] z-30">
             <div className="px-2">
               <h2 className="text-[10px] font-bold uppercase tracking-wider mb-4 hidden md:block" style={{ color: BRAND_PURPLE }}>SkimSync Dashboard</h2>
@@ -349,7 +217,7 @@ export default function Dashboard() {
             </div>
           </aside>
 
-          <main className="flex-1 p-6 md:p-12 bg-[#F9FAFB]">
+          <main className="flex-1 overflow-y-auto p-6 md:p-12 bg-[#F9FAFB]" ref={scrollContainerRef}>
             <AnimatePresence mode="wait">
               <motion.div 
                 key={activeTab}
@@ -358,27 +226,39 @@ export default function Dashboard() {
                 exit={{ opacity: 0, x: -10 }}
                 transition={{ duration: 0.2 }}
               >
-                  {activeTab === 'home' && <HomeView files={files} onUpload={handleUpload} onAction={showToast} />}
+                  {activeTab === 'home' && <HomeView BRAND_PURPLE={BRAND_PURPLE} files={files} onUpload={handleUpload} onAction={showToast} />}
+                  
                   {activeTab === 'files' && (
                       <FilesView 
+                          BRAND_PURPLE={BRAND_PURPLE} 
                           files={filteredFiles} 
                           searchQuery={searchQuery} 
                           setSearchQuery={setSearchQuery} 
+                          selectedFormats={selectedFormats}
+                          setSelectedFormats={setSelectedFormats}
+                          selectedLoads={selectedLoads}
+                          setSelectedLoads={setSelectedLoads}
                           onAction={showToast}
+                          showFilters={showFilters}
+                          setShowFilters={setShowFilters}
                       />
                   )}
+                  
                   {activeTab === 'exam' && (
                       <ExamView 
+                          BRAND_PURPLE={BRAND_PURPLE} 
                           files={files}
                           selectedFiles={examSelectedFiles}
                           setSelectedFiles={setExamSelectedFiles}
                           uploadedFiles={examUploadedFiles}
                           setUploadedFiles={setExamUploadedFiles}
-                          onProceed={() => setActiveTab('exam-results')}
+                          onViewBriefs={() => setActiveTab('exam-results')}
                       />
                   )}
+
                   {activeTab === 'exam-results' && (
                       <PostBriefView
+                          BRAND_PURPLE={BRAND_PURPLE}
                           selectedFiles={examSelectedFiles}
                           flippedCards={flippedCards}
                           setFlippedCards={setFlippedCards}
@@ -412,11 +292,7 @@ function SidebarItem({ icon, label, active, brandColor, onClick }: any) {
   );
 }
 
-<<<<<<< Updated upstream
-function ExamView({ files, selectedFiles, setSelectedFiles, uploadedFiles, setUploadedFiles, onProceed }: any) {
-=======
 function ExamView({ BRAND_PURPLE, files, selectedFiles, setSelectedFiles, uploadedFiles, setUploadedFiles, onViewBriefs }: any) {
->>>>>>> Stashed changes
     const allFiles = [...files, ...uploadedFiles];
 
     const handleFileUpload = () => {
@@ -490,21 +366,6 @@ function ExamView({ BRAND_PURPLE, files, selectedFiles, setSelectedFiles, upload
                 {allFiles.map((file: any) => {
                     const isSelected = selectedFiles.some((f: StudyFile) => f.id === file.id);
                     return (
-<<<<<<< Updated upstream
-                        <div key={file.id} className={`bg-white border rounded-[24px] p-5 flex items-center justify-between cursor-pointer transition-all ${isSelected ? 'border-[#581DC6] bg-purple-50/20' : 'border-slate-100 hover:border-slate-200'}`} onClick={() => toggleFileSelection(file)}>
-                            <div className="flex items-center gap-4">
-                                <div className={`shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center ${isSelected ? 'bg-[#581DC6] border-[#581DC6]' : 'border-slate-300'}`}>
-                                    {isSelected && <CheckCircle2 size={16} className="text-white" />}
-                                </div>
-                                <div className="hidden sm:flex shrink-0 w-12 h-12 bg-purple-100 text-[#581DC6] rounded-xl items-center justify-center"><FileText size={22} /></div>
-                                <div>
-                                    <h4 className="font-bold text-slate-800 break-all sm:break-normal">{file.name}</h4>
-                                    <p className="text-xs text-slate-500">{file.format} • {file.duration}</p>
-                                </div>
-                            </div>
-                            <div className="hidden sm:block"><LoadBadge load={file.load} /></div>
-                        </div>
-=======
                         <ExamFileRow 
                             key={file.id} 
                             file={file} 
@@ -512,7 +373,6 @@ function ExamView({ BRAND_PURPLE, files, selectedFiles, setSelectedFiles, upload
                             isSelected={isSelected}
                             onSelect={() => toggleFileSelection(file)}
                         />
->>>>>>> Stashed changes
                     );
                 })}
                 {allFiles.length === 0 && (
@@ -525,60 +385,6 @@ function ExamView({ BRAND_PURPLE, files, selectedFiles, setSelectedFiles, upload
     );
 }
 
-<<<<<<< Updated upstream
-function HomeView({ files, onUpload, onAction }: any) {
-    return (
-      <div className="max-w-[1000px] mx-auto">
-        <h1 className="text-[32px] font-black text-slate-900 mb-8 tracking-tight">Welcome to SkimSync</h1>
-        <button onClick={onUpload} className="w-full border-2 border-dashed border-slate-200 rounded-[32px] bg-white p-8 md:p-12 flex flex-col items-center mb-12 hover:border-purple-300 transition-all group">
-          <Upload size={32} className="text-slate-300 mb-4 group-hover:scale-110 transition-transform" />
-          <h3 className="text-lg font-bold">Upload to SkimSync</h3>
-          <p className="text-sm text-slate-500 mb-6 text-center">Drop your lecture notes or study guides here</p>
-          <div className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-bold group-hover:bg-[#581DC6]">Select Files</div>
-        </button>
-        <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Clock size={20} className="text-slate-400" /> Recent Study Sessions</h2>
-        <div className="space-y-4">
-            {files.slice(0, 3).map((f:any) => (
-                <div key={f.id} className="bg-white p-5 rounded-[24px] border border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:shadow-md transition-all">
-                    <div className="flex items-center gap-4 w-full">
-                      <div className="shrink-0 w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600"><FileText size={20} /></div>
-                      <span className="font-bold text-slate-700 break-all">{f.name}</span>
-                    </div>
-                    <button onClick={() => onAction("Opening focus reader...")} className="shrink-0 w-full sm:w-auto bg-[#581DC6] text-white px-6 py-2 rounded-xl font-bold text-sm">Study Now</button>
-                </div>
-            ))}
-        </div>
-      </div>
-    );
-}
-
-function FilesView({ files, searchQuery, setSearchQuery, onAction }: any) {
-    return (
-        <div className="max-w-[1000px] mx-auto">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-                <h1 className="text-3xl font-black">SkimSync Library</h1>
-                <div className="relative w-full sm:w-auto">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search your files..." className="w-full sm:w-auto pl-10 pr-4 py-2.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-purple-100" />
-                </div>
-            </div>
-            <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-x-auto w-full">
-                <table className="w-full text-left min-w-[600px]">
-                    <thead className="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        <tr><th className="px-6 py-5">Material Name</th><th className="px-6 py-5">Format</th><th className="px-6 py-5">Complexity</th><th className="px-6 py-5 text-right">Action</th></tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                        {files.map((f:any) => (
-                            <tr key={f.id} className="group hover:bg-slate-50/50 transition-colors">
-                                <td className="px-6 py-5 font-bold text-slate-700">{f.name}</td>
-                                <td className="px-6 py-5 text-xs text-slate-400 font-bold">{f.format}</td>
-                                <td className="px-6 py-5"><LoadBadge load={f.load} /></td>
-                                <td className="px-6 py-5 text-right"><button onClick={() => onAction("Opening Document...")} className="p-2 text-slate-300 group-hover:text-purple-600 transition-colors"><ExternalLink size={18} /></button></td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-=======
 function ExamFileRow({ file, BRAND_PURPLE, isSelected, onSelect }: any) {
     return (
         <div className={`bg-white border rounded-[24px] p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between cursor-pointer group ${isSelected ? `border-[#581DC6] ring-2 ring-[#581DC6]/10 bg-purple-50/30` : 'border-[#F1F5F9] hover:border-slate-200'}`} onClick={onSelect}>
@@ -795,7 +601,6 @@ function ExamHighlightsView({ BRAND_PURPLE, selectedFiles, examModeEnabled, setE
                     <Sparkles size={18} />
                     Proceed to Skim Sync
                 </button>
->>>>>>> Stashed changes
             </div>
         </div>
     );
