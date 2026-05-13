@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ReactLenis, useLenis } from '@studio-freight/react-lenis';
+import PostBriefView from '@/app/components/post-brief-component';
 
 type TabType = 'home' | 'files' | 'exam' | 'exam-results';
 
@@ -325,105 +326,6 @@ function ExamView({ files, selectedFiles, setSelectedFiles, uploadedFiles, setUp
                     );
                 })}
             </div>
-        </div>
-    );
-}
-
-function PostBriefView({ flippedCards, setFlippedCards, confidenceRating, setConfidenceRating, onBack, onAction }: any) {
-    const toggleCard = (index: number) => {
-        const next = new Set(flippedCards);
-        if (next.has(index)) next.delete(index);
-        else next.add(index);
-        setFlippedCards(next);
-    };
-
-    const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } };
-    const item = { hidden: { y: 20, opacity: 0 }, show: { y: 0, opacity: 1 } };
-
-    return (
-        <div className="max-w-[1000px] mx-auto pb-20">
-            <header className="mb-8">
-                <button onClick={onBack} className="mb-4 text-slate-400 font-bold hover:text-slate-600 transition-colors">← Back to Setup</button>
-                <h1 className="text-3xl font-black text-slate-900 flex items-center gap-3">
-                   Exam Modes
-                </h1>
-            </header>
-
-            <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <motion.div variants={item} className="bg-white border border-slate-100 rounded-[28px] p-6 shadow-sm">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center"><CreditCard size={20} /></div>
-                            <h3 className="font-bold text-slate-900">Hero Fact Flashcards</h3>
-                        </div>
-                        <div 
-                            onClick={() => toggleCard(0)}
-                            className="bg-slate-50 rounded-2xl p-8 h-40 flex flex-col items-center justify-center border border-dashed border-slate-200 cursor-pointer hover:border-blue-400 transition-all overflow-hidden"
-                        >
-                            <AnimatePresence mode="wait">
-                                {!flippedCards.has(0) ? (
-                                    <motion.h4 key="front" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="text-lg font-black text-slate-800 text-center">Classical Conditioning</motion.h4>
-                                ) : (
-                                    <motion.p key="back" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="text-sm text-center text-slate-600 overflow-y-auto">A learning process that occurs through associations between an environmental stimulus and a naturally occurring stimulus.</motion.p>
-                                )}
-                            </AnimatePresence>
-                        </div>
-                        <button onClick={() => onAction("Launching Active Recall Session...")} className="w-full mt-4 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm">Practice Flashcards</button>
-                    </motion.div>
-
-                    <motion.div variants={item} className="bg-[#0F172A] rounded-[28px] p-6 shadow-xl text-white flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="w-10 h-10 bg-white/10 text-white rounded-xl flex items-center justify-center"><Download size={20} /></div>
-                                <h3 className="font-bold">Priority "Cheat Sheet"</h3>
-                            </div>
-                            <p className="text-sm text-slate-400 mb-6">Download a tangible one-page artifact containing all essential definitions and cues from your selected documents.</p>
-                        </div>
-                        <button onClick={() => onAction("Preparing SkimSync PDF Export...")} className="w-full py-3 bg-emerald-500 text-white rounded-xl font-bold text-sm">Download Cheat Sheet</button>
-                    </motion.div>
-                </div>
-
-                <motion.div variants={item} className="bg-amber-50 border border-amber-100 rounded-[28px] p-8">
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                        <div>
-                            <h3 className="text-xl font-bold text-amber-900">Confidence Meter</h3>
-                            <p className="text-amber-700/70 text-sm font-medium">How ready do you feel for this topic?</p>
-                        </div>
-                        <div className="flex gap-2 flex-wrap">
-                            {[1, 2, 3, 4, 5].map((num) => (
-                                <button 
-                                    key={num}
-                                    onClick={() => setConfidenceRating(num)}
-                                    className={`w-12 h-12 rounded-xl font-bold text-lg transition-all shrink-0 ${confidenceRating === num ? 'bg-amber-500 text-white shadow-lg scale-105' : 'bg-white text-amber-600 hover:bg-amber-100'}`}
-                                >{num}</button>
-                            ))}
-                        </div>
-                    </div>
-                    {confidenceRating && confidenceRating <= 2 && (
-                        <div className="mt-6 p-4 bg-white/50 rounded-xl flex items-start gap-3 text-sm text-amber-800 border border-amber-200">
-                            <AlertCircle size={18} className="shrink-0" />
-                            <p>You seem unsure. SkimSync suggests replaying the <span className="font-bold underline cursor-pointer">Summary Audio Chunks</span>.</p>
-                        </div>
-                    )}
-                </motion.div>
-
-                <motion.div variants={item} className="bg-white border border-slate-100 rounded-[32px] p-8 shadow-sm">
-                    <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2"><BarChart3 size={24} className="text-purple-500" /> Focus Visualizer</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Time Saved</span>
-                            <div className="flex items-baseline gap-2"><span className="text-3xl font-black text-purple-600">20</span><span className="text-sm font-bold text-slate-500">pages</span></div>
-                            <p className="text-xs text-emerald-600 flex items-center gap-1 font-bold mt-1"><Zap size={10} fill="currentColor"/> processed in 6m</p>
-                        </div>
-                        <div className="md:col-span-2">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Keywords Mastered</span>
-                            <div className="flex flex-wrap gap-2">
-                                {['Conditioning', 'Inflation', 'Proofs', 'Mechanism', 'Organic', 'Macro', 'Induction'].map(t => <span key={t} className="px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-bold border border-slate-100">{t}</span>)}
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
-            </motion.div>
         </div>
     );
 }

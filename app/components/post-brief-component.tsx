@@ -1,6 +1,39 @@
-// PostBriefView Component - Insert before FilesView function
+"use client";
 
-function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCards, confidenceRating, setConfidenceRating, onBack, onAction }: any) {
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Sparkles, FileText, FileCode, AlertCircle, ChevronRight } from 'lucide-react';
+
+// 1. Tell TypeScript what a 'StudyFile' looks like
+export interface StudyFile {
+    id: string;
+    name: string;
+    date: string;
+    size: string;
+    format: string;
+    load: 'Low' | 'Medium' | 'High';
+    duration: string;
+}
+
+// 2. Helper function to generate mock flashcards
+const generateHighlights = (file: StudyFile) => {
+    return [
+        { type: 'definition', title: 'Classical Conditioning', content: 'A learning process that occurs through associations between an environmental stimulus and a naturally occurring stimulus.' },
+        { type: 'definition', title: 'Operant Conditioning', content: 'A method of learning that employs rewards and punishments for behavior.' }
+    ];
+};
+
+// 3. Export the component so your dashboard can use it
+export default function PostBriefView({ 
+    BRAND_PURPLE, 
+    selectedFiles, 
+    flippedCards, 
+    setFlippedCards, 
+    confidenceRating, 
+    setConfidenceRating, 
+    onBack, 
+    onAction 
+}: any) {
     const [showCheatSheetExport, setShowCheatSheetExport] = useState(false);
     
     // Get all highlights for flashcards
@@ -36,7 +69,7 @@ function PostBriefView({ BRAND_PURPLE, selectedFiles, flippedCards, setFlippedCa
 
     // Calculate metrics
     const totalPages = selectedFiles.reduce((acc: number) => acc + 20, 0); // Mock: assume 20 pages per file
-    const timeSavedMinutes = Math.round((totalPages / 10) * 2); // Mock calculation
+    const timeSavedMinutes = Math.round((totalPages / 10) * 2); 
     const keywordsCount = allHighlights.length;
 
     return (
