@@ -1,7 +1,8 @@
-"use client"; 
+"use client";
 
+import { useRef, useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // --- TEAM DATA ---
 const TEAM_MEMBERS = [
@@ -29,6 +30,33 @@ const staggerContainer = {
 };
 
 export default function LandingPage() {
+  /** 
+   * FIX: Adding <HTMLVideoElement> tells TypeScript exactly what this ref is.
+   * This removes the red squiggly lines from .play() and .pause() methods.
+   */
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  // --- FIXED TOGGLE PLAY LOGIC ---
+  const togglePlay = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (isPlaying) {
+      video.pause();
+      setIsPlaying(false);
+    } else {
+      video.play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch((error) => {
+          console.error("Playback failed:", error);
+          setIsPlaying(false);
+        });
+    }
+  };
+
   // Splits the data into two rows
   const firstRow = TEAM_MEMBERS.slice(0, 4);
   const secondRow = TEAM_MEMBERS.slice(4, 7);
@@ -38,9 +66,8 @@ export default function LandingPage() {
       {/* Subtle Dotted Background Pattern */}
       <div className="absolute inset-0 z-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px] opacity-50"></div>
 
-      {/* --- NAVBAR (Updated per image_2e0ab8.png) --- */}
+      {/* --- NAVBAR --- */}
       <nav className="relative z-50 flex items-center justify-between px-8 py-5 max-w-7xl mx-auto bg-white/80 backdrop-blur-md">
-        
         {/* Logo */}
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
@@ -107,26 +134,52 @@ export default function LandingPage() {
         </motion.div>
 
         <div className="relative w-full flex justify-center lg:justify-end">
+          {/* --- ARROW OVERLAPPING PICTURE --- */}
           <motion.div 
             animate={{ y: [0, -12, 0] }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -left-16 bottom-12 w-32 h-32 z-20 pointer-events-none"
+            className="absolute left-[-35px] bottom-16 w-48 h-48 z-30 pointer-events-none"
           >
-            <img src="/images/Hand-drawn arrow.png" alt="Arrow" className="w-full h-full object-contain" />
+            <img 
+              src="/images/Hand-drawn arrow.png" 
+              alt="Arrow" 
+              className="w-full h-full object-contain" 
+            />
           </motion.div>
 
+          {/* --- VIDEO CONTAINER --- */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8 }}
-            className="relative w-full max-w-[500px] aspect-[4/5] border border-gray-200 rounded-sm shadow-xl overflow-hidden flex items-center justify-center"
+            onClick={togglePlay}
+            className="relative w-full max-w-[500px] aspect-[4/5] border border-gray-200 rounded-sm shadow-xl overflow-hidden flex items-center justify-center z-10 cursor-pointer group"
           >
-            {/* 1. YOUR NEW IMAGE */}
-            <img 
-              src="/images/landing 6.png" 
-              alt="Video Thumbnail" 
+            <video 
+              ref={videoRef}
+              src="/images/landingvid.mp4" 
+              aria-label="Video showing the platform interface"
               className="absolute inset-0 w-full h-full object-cover"
+              playsInline
+              muted
+              onEnded={() => setIsPlaying(false)}
             />
+
+            {/* Play Button Overlay */}
+            <AnimatePresence>
+              {!isPlaying && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.1 }}
+                  className="relative z-20 w-20 h-20 bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/50 group-hover:bg-white/40 transition-colors shadow-lg"
+                >
+                  <div className="w-0 h-0 border-t-[12px] border-t-transparent border-l-[20px] border-l-white border-b-[12px] border-b-transparent ml-2" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {!isPlaying && <div className="absolute inset-0 bg-black/10 z-10 transition-opacity" />}
           </motion.div>
         </div>
       </main>
@@ -174,7 +227,7 @@ export default function LandingPage() {
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="relative rounded-2xl overflow-hidden "
+          className="relative rounded-2xl overflow-hidden shadow-lg"
         >
           <img src="/images/landing 2.png" alt="Exam Mode" className="w-full h-auto object-cover" />
         </motion.div>
@@ -187,7 +240,7 @@ export default function LandingPage() {
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="relative rounded-2xl overflow-hidden "
+          className="relative rounded-2xl overflow-hidden shadow-lg"
         >
           <img src="/images/landing 3.png" alt="Skim-Sync" className="w-full h-auto object-cover" />
         </motion.div>
@@ -204,7 +257,7 @@ export default function LandingPage() {
           </div>
           <h2 className="text-4xl font-bold text-gray-900 mb-6">Instant Audio Conversion</h2>
           <p className="text-gray-600 text-lg leading-relaxed mb-8">
-           This creates a simultaneous multimodal learning environment where the web application highlights the corresponding text on the screen in real-time as the audio brief plays. By allowing users to skim with their eyes while absorbing with their ears, it caters to different learning styles and helps keep the user’s place in the document even in high-distraction environments like a commute.
+            This creates a simultaneous multimodal learning environment where the web application highlights the corresponding text on the screen in real-time as the audio brief plays. By allowing users to skim with their eyes while absorbing with their ears, it caters to different learning styles and helps keep the user’s place in the document even in high-distraction environments like a commute.
           </p>
           <ul className="space-y-4">
             {["Interactive audio guides", "Cross-device access", "Active Recall Check-ins"].map((item, index) => (
@@ -255,7 +308,7 @@ export default function LandingPage() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="relative rounded-2xl overflow-hidden "
+          className="relative rounded-2xl overflow-hidden shadow-lg"
         >
           <img src="/images/landing 4.png" alt="Progress Tracking" className="w-full h-auto object-cover" />
         </motion.div>
@@ -265,7 +318,8 @@ export default function LandingPage() {
       <motion.section id="about-us" {...fadeInUp} className="relative z-10 max-w-4xl mx-auto px-8 py-24 text-center">
         <h2 className="text-3xl font-bold text-gray-900 mb-8">About Us</h2>
         <p className="text-gray-600 text-base leading-relaxed">
-Our journey began with a shared frustration: the sheer exhaustion of staring at endless walls of text in academic PDFs.  We recognized that for Filipino college students, especially those balancing part-time jobs, leadership roles, and long commutes, the sheer volume of static PDFs often leads to cognitive overload and mental exhaustion. Our mission was to create a "digital bridge" that moves beyond passive reading, utilizing auditory processing and multimodal learning to improve retention while preserving the user's mental energy. By integrating features like Burnout Detection and Active Recall, we built an empathetic learning companion that turns lost hours into high-utility study sessions, ensuring that students can stay productive without the burnout.        </p>
+          Our journey began with a shared frustration: the sheer exhaustion of staring at endless walls of text in academic PDFs. We recognized that for Filipino college students, especially those balancing part-time jobs, leadership roles, and long commutes, the sheer volume of static PDFs often leads to cognitive overload and mental exhaustion. Our mission was to create a "digital bridge" that moves beyond passive reading, utilizing auditory processing and multimodal learning to improve retention while preserving the user's mental energy. By integrating features like Burnout Detection and Active Recall, we built an empathetic learning companion that turns lost hours into high-utility study sessions, ensuring that students can stay productive without the burnout.
+        </p>
       </motion.section>
 
       {/* --- MEET THE DEVELOPERS SECTION --- */}
