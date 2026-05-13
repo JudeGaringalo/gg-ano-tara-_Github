@@ -91,13 +91,15 @@ export default function LandingPage() {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="hidden md:block"
             >
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="px-5 py-2 bg-[#5A22C3] text-white rounded-lg hover:bg-[#4a1ca3] transition shadow-md font-medium text-sm"
-              >
-                Get started
-              </motion.button>
+              <Link href="/login">
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-5 py-2 bg-[#5A22C3] text-white rounded-lg hover:bg-[#4a1ca3] transition shadow-md font-medium text-sm"
+                >
+                  Get started
+                </motion.button>
+              </Link>
             </motion.div>
 
             {/* Mobile Menu Toggle Button */}
@@ -128,9 +130,11 @@ export default function LandingPage() {
               <Link href="#features" onClick={() => setIsMobileMenuOpen(false)} className="text-gray-600 hover:text-[#5A22C3] font-medium transition">Features</Link>
               <Link href="#developers" onClick={() => setIsMobileMenuOpen(false)} className="text-gray-600 hover:text-[#5A22C3] font-medium transition">Developers</Link>
               <Link href="#about-us" onClick={() => setIsMobileMenuOpen(false)} className="text-gray-600 hover:text-[#5A22C3] font-medium transition">About Us</Link>
-              <button className="w-full mt-2 px-5 py-3 bg-[#5A22C3] text-white rounded-lg hover:bg-[#4a1ca3] transition shadow-md font-medium text-sm">
-                Get started
-              </button>
+              <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                <button className="w-full mt-2 px-5 py-3 bg-[#5A22C3] text-white rounded-lg hover:bg-[#4a1ca3] transition shadow-md font-medium text-sm">
+                  Get started
+                </button>
+              </Link>
             </motion.div>
           )}
         </AnimatePresence>
@@ -152,34 +156,23 @@ export default function LandingPage() {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-3 max-w-lg lg:max-w-xl mx-auto lg:mx-0">
-            <input 
-              type="email" 
-              placeholder="Enter your email" 
-              className="flex-[2] px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600 bg-white/50 backdrop-blur-sm w-full"
-            />
-            <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex-1 px-8 py-3 bg-[#5A22C3] text-white font-medium rounded-md hover:bg-[#4a1ca3] transition shadow-md whitespace-nowrap w-full sm:w-auto"
-            >
-              Get started
-            </motion.button>
+            {/* REMOVED EMAIL INPUT FIELD */}
+            <Link href="/login" className="w-full sm:w-auto">
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="px-8 py-4 bg-[#5A22C3] text-white font-semibold rounded-md hover:bg-[#4a1ca3] transition shadow-lg whitespace-nowrap w-full sm:w-64"
+              >
+                Get started
+              </motion.button>
+            </Link>
           </div>
-          <p className="text-xs text-gray-500 mt-3">We value your privacy. See our privacy policy.</p>
+          <p className="text-xs text-gray-500 mt-4">Start your learning journey today.</p>
         </motion.div>
 
         <div className="relative w-full flex justify-center lg:justify-end order-1 lg:order-2">
-          {/* Arrow hidden on screens smaller than lg */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: [0, -12, 0] }}
-            transition={{ opacity: { duration: 0.8 }, y: { duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.8 } }}
-            className="hidden lg:block absolute left-[-45px] bottom-16 w-48 h-48 z-30 pointer-events-none"
-          >
-            <img src="/images/Hand-drawn arrow.png" alt="Arrow" className="w-full h-full object-contain" />
-          </motion.div>
 
-          {/* Video Preview: Responsive width adjustments */}
+          {/* Video Preview */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -353,22 +346,21 @@ export default function LandingPage() {
       </motion.section>
 
       {/* --- MEET THE DEVELOPERS SECTION --- */}
-      <section id="developers" className="relative z-10 max-w-7xl mx-auto px-6 md:px-8 py-16 md:py-24 md:pb-32">
+      <section id="developers" className="relative z-10 max-w-7xl mx-auto px-6 md:px-8 py-16 md:py-24">
         <motion.h2 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-3xl md:text-4xl font-bold text-gray-900 text-center mb-12 md:mb-16"
+          className="text-3xl md:text-4xl font-bold text-[#0F172A] text-center mb-16"
         >
           Meet the Developers
         </motion.h2>
 
-        {/* Fluid CSS Grid for auto-wrapping across screen sizes */}
         <motion.div 
           variants={staggerContainer}
           initial="initial"
           whileInView="whileInView"
-          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8 justify-items-center"
+          className="flex flex-wrap justify-center gap-x-10 gap-y-14"
         >
           {TEAM_MEMBERS.map((dev) => (
             <DeveloperCard key={dev.id} dev={dev} />
@@ -379,44 +371,29 @@ export default function LandingPage() {
   );
 }
 
-// Typing applied locally
-interface DevProps {
-  id: number;
-  name: string;
-  role: string;
-  img: string;
-}
-
-function DeveloperCard({ dev }: { dev: DevProps }) {
+function DeveloperCard({ dev }: { dev: any }) {
   return (
     <motion.div 
       variants={fadeInUp}
-      whileHover={{ y: -5 }}
-      className="flex flex-col w-full max-w-[190px] cursor-pointer group"
+      className="flex flex-col items-center group w-full max-w-[240px]"
     >
-      <div className="w-full aspect-[3/4] overflow-hidden relative mb-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+      <div className="relative w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-lg mb-5">
         <img 
           src={dev.img} 
           alt={dev.name} 
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
         />
-        <div 
-          className="absolute inset-0 flex flex-col justify-end p-3 sm:p-4"
-          style={{ background: 'linear-gradient(to top, rgba(88, 29, 198, 0.8) 0%, rgba(88, 29, 198, 0) 60%)' }}
-        >
-          <h4 className="font-bold text-white text-base sm:text-lg md:text-xl leading-[1.1] uppercase tracking-tighter">
-            {dev.name.split(' ').map((part: string, i: number) => (
-              <span key={i} className="block">{part}</span>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#5A22C3] via-transparent to-transparent flex flex-col justify-end p-6">
+          <h4 className="text-white font-bold text-lg md:text-xl leading-tight uppercase">
+            {dev.name.split(' ').map((word: string, i: number) => (
+              <span key={i} className="block">{word}</span>
             ))}
           </h4>
         </div>
       </div>
-      
-      <div className="text-left px-1">
-        <p className="text-[#581DC6] text-[10px] md:text-[11px] font-bold uppercase tracking-widest leading-tight">
-          {dev.role}
-        </p>
-      </div>
+      <p className="text-[#5A22C3] text-[10px] md:text-[11px] font-bold tracking-[0.15em] uppercase text-center leading-relaxed">
+        {dev.role}
+      </p>
     </motion.div>
   );
 }
