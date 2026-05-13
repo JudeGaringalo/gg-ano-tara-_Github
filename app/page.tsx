@@ -30,14 +30,9 @@ const staggerContainer = {
 };
 
 export default function LandingPage() {
-  /** 
-   * FIX: Adding <HTMLVideoElement> tells TypeScript exactly what this ref is.
-   * This removes the red squiggly lines from .play() and .pause() methods.
-   */
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // --- FIXED TOGGLE PLAY LOGIC ---
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -57,7 +52,6 @@ export default function LandingPage() {
     }
   };
 
-  // Splits the data into two rows
   const firstRow = TEAM_MEMBERS.slice(0, 4);
   const secondRow = TEAM_MEMBERS.slice(4, 7);
 
@@ -147,13 +141,13 @@ export default function LandingPage() {
             />
           </motion.div>
 
-          {/* --- VIDEO CONTAINER --- */}
+          {/* --- VIDEO CONTAINER (Borders/Shadow Removed) --- */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8 }}
             onClick={togglePlay}
-            className="relative w-full max-w-[500px] aspect-[4/5] border border-gray-200 rounded-sm shadow-xl overflow-hidden flex items-center justify-center z-10 cursor-pointer group"
+            className="relative w-full max-w-[500px] aspect-[4/5] rounded-sm overflow-hidden flex items-center justify-center z-10 cursor-pointer group"
           >
             <video 
               ref={videoRef}
@@ -222,12 +216,13 @@ export default function LandingPage() {
           </ul>
         </motion.div>
 
+        {/* --- IMAGE CONTAINER (Shadow Removed) --- */}
         <motion.div 
           initial={{ opacity: 0, x: 30 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="relative rounded-2xl overflow-hidden shadow-lg"
+          className="relative rounded-2xl overflow-hidden"
         >
           <img src="/images/landing 2.png" alt="Exam Mode" className="w-full h-auto object-cover" />
         </motion.div>
@@ -235,12 +230,13 @@ export default function LandingPage() {
       
       {/* --- INSTANT AUDIO CONVERSION / SKIM-SYNC --- */}
       <section id="skim-sync" className="relative z-10 max-w-7xl mx-auto px-8 py-24 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        {/* --- IMAGE CONTAINER (Shadow Removed) --- */}
         <motion.div 
           initial={{ opacity: 0, x: -30 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="relative rounded-2xl overflow-hidden shadow-lg"
+          className="relative rounded-2xl overflow-hidden"
         >
           <img src="/images/landing 3.png" alt="Skim-Sync" className="w-full h-auto object-cover" />
         </motion.div>
@@ -303,12 +299,13 @@ export default function LandingPage() {
           </ul>
         </motion.div>
 
+        {/* --- IMAGE CONTAINER (Shadow Removed) --- */}
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="relative rounded-2xl overflow-hidden shadow-lg"
+          className="relative rounded-2xl overflow-hidden"
         >
           <img src="/images/landing 4.png" alt="Progress Tracking" className="w-full h-auto object-cover" />
         </motion.div>
