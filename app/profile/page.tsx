@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
-// --- CONFIGURATION ---
 const COLORS = ['#0085FF', '#00C292', '#F5A623', '#631DC3'];
 
 const chartData = [
@@ -18,7 +17,6 @@ const ProfileDashboard = () => {
   const [activeTab, setActiveTab] = useState('analytics');
   const [isEditing, setIsEditing] = useState(false);
 
-  // Animation Variants
   const pageVariants = {
     initial: { opacity: 0, y: 15 },
     animate: { 

@@ -2,3 +2,4 @@ npm install @supabase/supabase-js
 npm install flesch-kincaid lucide-react
 npm install pdf-lib mammoth xlsx officeparser
 npm install framer-motion
+npm install @supabase/ssr
