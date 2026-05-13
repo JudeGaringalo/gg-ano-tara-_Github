@@ -61,38 +61,49 @@ export default function LandingPage() {
       <div className="absolute inset-0 z-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px] opacity-50"></div>
 
       {/* --- NAVBAR --- */}
-      <nav className="relative z-50 flex items-center justify-between px-8 py-5 max-w-7xl mx-auto bg-white/80 backdrop-blur-md">
-        {/* Logo */}
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="flex items-center w-24 h-auto"
+<nav className="relative z-50 flex items-center justify-between px-8 py-5 max-w-7xl mx-auto bg-white/80 backdrop-blur-md">
+  {/* Logo */}
+  <motion.div 
+    initial={{ opacity: 0, x: -20 }}
+    animate={{ opacity: 1, x: 0 }}
+    transition={{ duration: 0.6 }}
+    className="flex items-center w-24 h-auto"
+  >
+    <img 
+      src="/images/logo.png" 
+      alt="Echo Logo" 
+      className="w-full h-auto object-contain"
+    />
+  </motion.div>
+
+      {/* Navigation Links - Now with entry animation */}
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.2 }}
+        className="hidden md:flex items-center gap-12 text-sm font-medium text-gray-600"
+      >
+        <Link href="#features" className="hover:text-[#5A22C3] transition">Features</Link>
+        <Link href="#developers" className="hover:text-[#5A22C3] transition">Developers</Link>
+        <Link href="#about-us" className="hover:text-[#5A22C3] transition">About Us</Link>
+      </motion.div>
+
+      {/* Action Button - Now with entry animation */}
+      <motion.div 
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, delay: 0.4 }}
+        className="flex items-center"
+      >
+        <motion.button 
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="px-6 py-2 bg-[#5A22C3] text-white rounded-lg hover:bg-[#4a1ca3] transition shadow-md font-medium"
         >
-          <img 
-            src="/images/logo.png" 
-            alt="Echo Logo" 
-            className="w-full h-auto object-contain"
-          />
-        </motion.div>
-
-        {/* Navigation Links */}
-        <div className="hidden md:flex items-center gap-12 text-sm font-medium text-gray-600">
-          <Link href="#features" className="hover:text-[#5A22C3] transition">Features</Link>
-          <Link href="#developers" className="hover:text-[#5A22C3] transition">Developers</Link>
-          <Link href="#about-us" className="hover:text-[#5A22C3] transition">About Us</Link>
-        </div>
-
-        {/* Action Button */}
-        <div className="flex items-center">
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-6 py-2 bg-[#5A22C3] text-white rounded-lg hover:bg-[#4a1ca3] transition shadow-md font-medium"
-          >
-            Get started
-          </motion.button>
-        </div>
-      </nav>
+          Get started
+        </motion.button>
+      </motion.div>
+    </nav>
 
       {/* --- HERO SECTION --- */}
       <main className="relative z-10 max-w-7xl mx-auto px-8 pt-20 pb-24 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
