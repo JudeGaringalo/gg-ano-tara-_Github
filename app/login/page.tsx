@@ -18,7 +18,7 @@ const LoginPage: React.FC = () => {
   return (
     <div className="flex min-h-screen w-full font-sans text-slate-900">
       
-      <section className="relative flex w-full flex-col p-8 md:w-1/2 lg:p-16">
+      <section className="relative flex w-full flex-col p-8 md:w-1/2 lg:p-16 bg-white">
 
         <motion.div 
         initial={{ opacity: 0,}}
