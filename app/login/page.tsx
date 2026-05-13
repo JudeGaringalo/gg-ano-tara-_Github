@@ -45,15 +45,13 @@ const LoginPage: React.FC = () => {
         <style>{`::-webkit-scrollbar { display: none; } * { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
         
         <div className="relative flex min-h-screen w-full font-sans text-slate-900 overflow-hidden">
-            
-            {/* --- BACKGROUND (Full on mobile, Right-half on desktop) --- */}
+
             <div className="absolute inset-0 z-0 lg:left-1/2 lg:w-1/2">
                 <img 
                     src="/images/login-bg.png" 
                     alt="Student studying" 
                     className="h-full w-full object-cover" 
                 />
-                {/* Gradients to darken background for text readability */}
                 <motion.div 
                     initial={{ opacity: 0 }} 
                     animate={{ opacity: 1 }} 
