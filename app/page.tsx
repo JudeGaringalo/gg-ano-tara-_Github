@@ -105,6 +105,142 @@ export default function LandingPage() {
         </p>
       </section>
 
+      {/* --- EXAM MODE BOOSTER SECTION --- */}
+      <section id="exam-mode" className="relative z-10 max-w-7xl mx-auto px-8 py-24 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div>
+          <div className="w-12 h-12 bg-[#F3E8FF] rounded-full flex items-center justify-center mb-6">
+            <img 
+              src="/images/message-chat-circle.png" 
+              alt="Exam Mode Icon" 
+              className="w-7 h-7 object-contain" 
+            />
+          </div>
+          <h2 className="text-4xl font-bold text-gray-900 mb-6">Exam Mode Booster</h2>
+          <p className="text-gray-600 text-lg leading-relaxed mb-8">
+            This feature automates the extraction of high-value information by scanning documents for structural cues such as bolded terms, definitions and summary sections. It instantly generates a “High-Priority Audio Brief.” Instead of listening to the entire document, the user can toggle “Exam Mode” to hear only the critical definitions and potential test questions, significantly reducing study time while increasing focus on essential data.
+          </p>
+          
+          <ul className="space-y-4">
+            {[
+              "Automated Summarization",
+              "Concise and Interactive",
+              "Interactive Skim-Sync"
+            ].map((item, index) => (
+              <li key={index} className="flex items-center gap-3 text-gray-700 font-medium">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full border-2 border-[#5A22C3] flex items-center justify-center">
+                  <svg className="w-3.5 h-3.5 text-[#5A22C3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-100">
+          <img 
+            src="/images/" 
+            alt="Study Environment for Exam Mode" 
+            className="w-full h-auto object-cover"
+          />
+        </div>
+      </section>
+      
+      {/* --- INSTANT AUDIO CONVERSION SECTION --- */}
+      <section id="audio-conversion" className="relative z-10 max-w-7xl mx-auto px-8 py-24 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        
+        {/* Left Column: Image (Reference image_468498.png) */}
+        <div className="order-2 lg:order-1 relative rounded-2xl overflow-hidden shadow-2xl border border-gray-100">
+          <img 
+            src="/images/" 
+            alt="Audio waves visualization" 
+            className="w-full h-auto object-cover"
+          />
+        </div>
+
+        {/* Right Column: Content */}
+        <div className="order-1 lg:order-2">
+          {/* Icon Container matching the light purple aesthetic */}
+          <div className="w-12 h-12 bg-[#F3E8FF] rounded-full flex items-center justify-center mb-6">
+            <img 
+              src="/images/Icon (2).png" 
+              alt="Exam Mode Icon" 
+              className="w-7 h-7 object-contain" 
+            />
+          </div>
+
+          <h2 className="text-4xl font-bold text-gray-900 mb-6">Instant Audio Conversion</h2>
+          <p className="text-gray-600 text-lg leading-relaxed mb-8">
+            This creates a simultaneous multimodal learning environment where the web application highlights the corresponding text on the screen in real-time as the audio brief plays. By allowing users to skim with their eyes while absorbing with their ears, it caters to different learning styles and helps keep the user's place in the document even in high-distraction environments like a commute.
+          </p>
+          
+          <ul className="space-y-4">
+            {[
+              "Engage with content through interactive audio",
+              "Access audio guides directly from your device",
+              "Active Recall Check-ins"
+            ].map((item, index) => (
+              <li key={index} className="flex items-center gap-3 text-gray-700 font-medium">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full border-2 border-[#5A22C3] flex items-center justify-center">
+                  <svg className="w-3.5 h-3.5 text-[#5A22C3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* --- TRACK LEARNING PROGRESS SECTION --- */}
+      <section id="track-progress" className="relative z-10 max-w-7xl mx-auto px-8 py-24 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        
+        {/* Left Column: Content */}
+        <div>
+          {/* Icon Container matching the light purple aesthetic */}
+          <div className="w-12 h-12 bg-[#F3E8FF] rounded-full flex items-center justify-center mb-6">
+            <img 
+              src="/images/chart-breakout-square.png" 
+              alt="Exam Mode Icon" 
+              className="w-7 h-7 object-contain"
+            />
+          </div>
+
+          <h2 className="text-4xl font-bold text-gray-900 mb-6">Track Learning Progress</h2>
+          <p className="text-gray-600 text-lg leading-relaxed mb-8">
+            The purpose of this feature is to transform passive listening into an active, high-retention learning session. At logical breaks in the audio brief, the system pauses and asks context-aware questions in either English or Tagalog. The user provides a verbal or text response to continue playback. This acts as a digital bridge to foundational mastery, ensuring the user is actively processing and retaining the information rather than letting it become background noise.
+          </p>
+          
+          <ul className="space-y-4">
+            {[
+              "Quickly analyze and export key data insights",
+              "Schedule automated progress reports to your inbox",
+              "Universal Document Merger & Multi-Format Export"
+            ].map((item, index) => (
+              <li key={index} className="flex items-center gap-3 text-gray-700 font-medium">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full border-2 border-[#5A22C3] flex items-center justify-center">
+                  <svg className="w-3.5 h-3.5 text-[#5A22C3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Right Column: Image (Reference image_3c1716.png) */}
+        <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-100">
+          <img 
+            src="/images/image_3c1716.png" 
+            alt="Person working on a" 
+            className="w-full h-auto object-cover"
+          />
+        </div>
+      </section>
+
     </div>
   );
 }
