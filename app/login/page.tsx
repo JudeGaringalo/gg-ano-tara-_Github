@@ -1,14 +1,17 @@
+"use client";
+
 import Link from 'next/link';
 import React from 'react'; 
+import { motion } from 'framer-motion';
 
 const avatarUrls = [
-  "/images/users/Jude.jpg",
-  "/images/users/Jude.jpg",
-  "/images/users/Jude.jpg",
-  "/images/users/Jude.jpg",
-  "/images/users/Jude.jpg",
-  "/images/users/Jude.jpg",
-  "/images/users/Jude.jpg",
+  "/images/Team/Jude.jpg",
+  "/images/Team/Sai.jpg",
+  "/images/Team/Kristine.jpg",
+  "/images/Team/Trisha.jpg",
+  "/images/Team/Mary.jpg",
+  "/images/Team/Gab.jpg",
+  "/images/Team/Jahmell.jpg",
 ];
 
 const LoginPage: React.FC = () => {
@@ -17,83 +20,152 @@ const LoginPage: React.FC = () => {
       
       <section className="relative flex w-full flex-col p-8 md:w-1/2 lg:p-16">
 
-        <div className="flex items-center w-24 h-auto">
-          <img src="/images/logo.png" alt="Echo Logo" className="w-full h-auto object-contain " />
+        <motion.div 
+        initial={{ opacity: 0,}}
+        animate={{ opacity: 1,}}
+        transition={{ duration: 0.6, ease: "easeOut" }}>
+        <div className="absolute top-4 left-4 lg:top-6 lg:left-6 z-10 flex items-center w-30 h-auto">
+            <img src="/images/logo.png" alt="Echo Logo" className="w-full h-auto object-contain " />
         </div>
+        </motion.div>
 
-        <div className="flex flex-1 flex-col justify-center items-center">
+        <motion.div 
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+        className="flex flex-1 flex-col items-center justify-center">
+        <div className="w-full max-w-[340px] px-6">
           <div className="w-full max-w-sm">
             <h2 className="text-4xl font-semibold tracking-tight">Log In</h2>
-            <p className="mt-2 text-slate-500">Login to your account.</p>
+            <p className="mt-2 text-slate-500">Ready to fine-tune your focus?</p>
 
-            <button type="button" className="mt-8 flex w-full items-center justify-center gap-3 rounded-full border border-slate-300 bg-white px-4 py-3 text-sm font-medium transition hover:bg-slate-50">
+            <button type="button" className="mt-8 flex w-full items-center justify-center gap-3 rounded-full border border-slate-300 bg-white px-4 py-3 text-sm font-medium transition hover:bg-slate-50 hover:scale-[1.05] active:scale-100">
               <img src="/images/Social icon.png" alt="Google logo" className="h-5 w-5"/>
               Log In with Google
             </button>
           </div>
         </div>
+        </motion.div>
+        
+        <motion.div 
+        className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+        
+        initial={{ opacity: 0, scale: 0.8, rotate: -10 }}
+        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+        transition={{ 
+            duration: 0.5, 
+            delay: 1.2, 
+            type: "spring",
+            stiffness: 100
+        }} />
 
-        <div className="absolute bottom-10 right-10">
-            <img src="/images/Hand-drawn arrow.png" alt="Hand drawn arrow decoration" className="h-[120px] w-[120px] object-contain "/>
-        </div>
+        <motion.div 
+        className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+        initial={{ opacity: 0, scale: 0.8, rotate: -10 }}
+        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+        transition={{ 
+            duration: 0.5, 
+            delay: 1.2, 
+            type: "spring",
+            stiffness: 100
+        }} >
+            <motion.img 
+            src="/images/Hand-drawn arrow.png" 
+            alt="Hand drawn arrow decoration" 
+            className="h-[250px] w-[250px] object-contain relative top-60 translate-x-[-60px]"
+            animate={{ y: [0, -12, 0] }}
+            transition={{ 
+            duration: 3, 
+            repeat: Infinity, 
+            ease: "easeInOut" 
+            }}/>
+        </motion.div>
+
       </section>
 
       <section className="relative hidden w-1/2 overflow-hidden md:block">
+
         <img 
-          src="image_4703fe.jpg" 
-          alt="Student studying" 
-          className="absolute h-full w-full object-cover"
+        src="login-bg.png" 
+        alt="Student studying" 
+        className="absolute inset-0 h-full w-full object-cover z-0"
+        />
+
+        <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        transition={{ duration: 1 }}
+        className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none"
         />
         
         <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" 
-             style={{ backgroundImage: 'radial-gradient(circle, #ffffff22 1px, transparent 1px)', backgroundSize: '40px 40px' }} 
-        />
+            style={{ backgroundImage: 'radial-gradient(circle, #ffffff22 1px, transparent 1px)', backgroundSize: '40px 40px' }}/>
 
-        <div className="absolute inset-0 flex flex-col justify-end p-12 text-white bg-gradient-to-t from-black/60 via-transparent to-transparent">
-            <div className="max-w-2xl">
+        <div className="absolute inset z-20 flex flex-col justify-end p-18 text-white bg-gradient-to-t from-black/60 via-transparent to-transparent ">
+                <motion.img 
+                src="/images/sparkles.png" 
+                alt="Sparkle"
+                className="w-16 h-16 mb-6 object-contain origin-center"
+                animate={{ 
+                    scale: [1, 1.1, 1],
+                    rotate: [0, 5, -5, 0]
+                }}
+                transition={{ 
+                    duration: 4, 
+                    repeat: Infinity, 
+                    ease: "easeInOut" 
+                }}
+                />
+
+                <motion.div
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}
+                className="max-w-2xl">
                 <h2 className="mb-6 text-5xl font-semibold leading-tight tracking-tighter">
-                Start fine-tuning your focus.
+                    Start fine-tuning your focus.
                 </h2>
                 <p className="mb-10 text-lg text-slate-200 leading-relaxed">
-                Log in to unlock a smarter way to study. With Echo, your documents become dynamic audio experiences that adapt to your mental energy. 
+                    Log in to unlock a smarter way to study. With Echo, your documents become dynamic audio experiences that adapt to your mental energy. 
                 </p>
-            </div>
+            </motion.div>
 
-            <div className="flex items-center gap-4">
-                <div className="flex -space-x-3">
+            <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.7 }}
+            className="flex items-center gap-4"
+            >
+                <div className="flex -space-x-3 hover-group">
                     {avatarUrls.map((imgSrc, index) => (
                     <img
                         key={index}
                         src={imgSrc}
                         alt={`Reviewer ${index + 1}`}
-                        className="h-10 w-10 rounded-full border-2 border-white object-cover bg-slate-300"
+                        className="relative h-[52px] w-[52px] rounded-full border-2 border-white bg-slate-300 object-cover transition-all duration-300 ease-out hover:z-10 hover:scale-110 hover:-translate-y-1 hover:shadow-lg cursor-pointer active:scale-95"
                     />
                     ))}
                 </div>
 
                 <div>
                     <div className="flex items-center">
-                    
                     <div className="flex gap-0.5">
                         {[1, 2, 3, 4, 5].map((i) => (
                         <img 
                             key={i} 
                             src="/images/Star.png" 
                             alt="star" 
-                            className="h-4 w-4 object-contain" 
+                            className="h-6 w-6 object-contain" 
                         />
                         ))}
                     </div>
-                    
-                    {/* Rating Number */}
                     <span className="ml-2 font-bold text-white">5.0</span>
                     </div>
-                    
-                    <p className="text-xs text-slate-300">from 200+ reviews</p>
+                    <p className="text-sm text-slate-300">from 200+ reviews</p>
                 </div>
-            </div>
+            </motion.div>
         </div>
-      </section>
+        </section>
     </div>
   );
 };
