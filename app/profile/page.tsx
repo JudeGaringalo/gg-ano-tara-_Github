@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion'; // <-- Imported Variants
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 // --- CONFIGURATION ---
@@ -18,8 +18,8 @@ const ProfileDashboard = () => {
   const [activeTab, setActiveTab] = useState('analytics');
   const [isEditing, setIsEditing] = useState(false);
 
-  // Parent Stagger logic
-  const pageVariants = {
+  // Parent Stagger logic - explicitly typed as Variants
+  const pageVariants: Variants = {
     initial: { opacity: 0, y: 15 },
     animate: { 
       opacity: 1, 
@@ -29,7 +29,8 @@ const ProfileDashboard = () => {
     exit: { opacity: 0, y: -15, transition: { duration: 0.2 } }
   };
 
-  const itemVariants = {
+  // Explicitly typed as Variants
+  const itemVariants: Variants = {
     initial: { opacity: 0, scale: 0.95, y: 10 },
     animate: { opacity: 1, scale: 1, y: 0 }
   };
