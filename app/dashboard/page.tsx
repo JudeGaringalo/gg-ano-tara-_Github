@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Upload, 
   FileText, 
@@ -21,15 +21,18 @@ import {
   User,
   ChevronDown,
   ChevronUp,
-  FileCode,
   Timer,
   ListFilter,
-  AlertCircle
+  AlertCircle,
+  CreditCard,
+  Download,
+  BarChart3,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Types ---
-type TabType = 'home' | 'files' | 'exam' | 'exam-highlights' | 'exam-results';
+type TabType = 'home' | 'files' | 'exam' | 'exam-results';
 
 interface StudyFile {
   id: string;
@@ -57,14 +60,22 @@ export default function Dashboard() {
   const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
   const [selectedLoads, setSelectedLoads] = useState<string[]>([]);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
   const [examSelectedFiles, setExamSelectedFiles] = useState<StudyFile[]>([]);
-  const [examModeEnabled, setExamModeEnabled] = useState(true);
   const [examUploadedFiles, setExamUploadedFiles] = useState<StudyFile[]>([]);
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
   const [confidenceRating, setConfidenceRating] = useState<number | null>(null);
   
+  // Ref for the scrollable container
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   const BRAND_PURPLE = "#581DC6";
+
+  // EFFECT: Reset scroll position to top whenever the tab changes
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo(0, 0);
+    }
+  }, [activeTab]);
 
   const showToast = (message: string, type: 'success' | 'info' = 'success') => {
     setToast({ message, type });
@@ -113,8 +124,12 @@ export default function Dashboard() {
 
       <nav className="z-30 flex items-center justify-between px-8 py-3 bg-white border-b border-gray-100 shrink-0">
         <div className="flex items-center">
-          <div className="h-8 w-8 bg-[#581DC6] rounded-lg mr-2 flex items-center justify-center text-white font-black italic shadow-lg shadow-purple-200">S</div>
-          <span className="font-black text-xl tracking-tighter text-slate-900">SKIM</span>
+          <img 
+            src="/images/logo.png" 
+            alt="Echo Logo" 
+            className="h-10 md:h-10 w-auto object-contain cursor-pointer mr-2" 
+            style={{filter:'invert(18%) sepia(88%) saturate(4535%) hue-rotate(262deg) brightness(82%) contrast(92%)'}} 
+          />
         </div>
 
         <div className="relative">
@@ -161,7 +176,7 @@ export default function Dashboard() {
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-64 bg-white border-r border-gray-100 flex flex-col p-4 shrink-0">
           <div className="px-2">
-            <h2 className="text-[10px] font-bold uppercase tracking-wider mb-4" style={{ color: BRAND_PURPLE }}>Dashboard</h2>
+            <h2 className="text-[10px] font-bold uppercase tracking-wider mb-4" style={{ color: BRAND_PURPLE }}>SkimSync Dashboard</h2>
             <nav className="space-y-1">
               <SidebarItem icon={<Home size={18}/>} label="Home" active={activeTab === 'home'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('home')} />
               <SidebarItem icon={<Files size={18}/>} label="All Files" active={activeTab === 'files'} brandColor={BRAND_PURPLE} onClick={() => setActiveTab('files')} />
@@ -170,7 +185,8 @@ export default function Dashboard() {
           </div>
         </aside>
 
-        <main className="flex-1 overflow-y-auto p-12 bg-[#F9FAFB]">
+        {/* scrollContainerRef reset happens here */}
+        <main ref={scrollContainerRef} className="flex-1 overflow-y-auto p-12 bg-[#F9FAFB] scroll-smooth">
           <AnimatePresence mode="wait">
             <motion.div 
               key={activeTab}
@@ -179,52 +195,33 @@ export default function Dashboard() {
               exit={{ opacity: 0, x: -10 }}
               transition={{ duration: 0.2 }}
             >
-                {activeTab === 'home' && <HomeView BRAND_PURPLE={BRAND_PURPLE} files={files} onUpload={handleUpload} onAction={showToast} />}
+                {activeTab === 'home' && <HomeView files={files} onUpload={handleUpload} onAction={showToast} />}
                 {activeTab === 'files' && (
                     <FilesView 
-                        BRAND_PURPLE={BRAND_PURPLE} 
                         files={filteredFiles} 
                         searchQuery={searchQuery} 
                         setSearchQuery={setSearchQuery} 
-                        selectedFormats={selectedFormats}
-                        setSelectedFormats={setSelectedFormats}
-                        selectedLoads={selectedLoads}
-                        setSelectedLoads={setSelectedLoads}
                         onAction={showToast}
-                        showFilters={showFilters}
-                        setShowFilters={setShowFilters}
                     />
                 )}
                 {activeTab === 'exam' && (
                     <ExamView 
-                        BRAND_PURPLE={BRAND_PURPLE} 
                         files={files}
                         selectedFiles={examSelectedFiles}
                         setSelectedFiles={setExamSelectedFiles}
                         uploadedFiles={examUploadedFiles}
                         setUploadedFiles={setExamUploadedFiles}
-                        onViewBriefs={() => setActiveTab('exam-highlights')}
-                    />
-                )}
-                {activeTab === 'exam-highlights' && (
-                    <ExamHighlightsView
-                        BRAND_PURPLE={BRAND_PURPLE}
-                        selectedFiles={examSelectedFiles}
-                        examModeEnabled={examModeEnabled}
-                        setExamModeEnabled={setExamModeEnabled}
-                        onBack={() => setActiveTab('exam')}
                         onProceed={() => setActiveTab('exam-results')}
                     />
                 )}
                 {activeTab === 'exam-results' && (
                     <PostBriefView
-                        BRAND_PURPLE={BRAND_PURPLE}
                         selectedFiles={examSelectedFiles}
                         flippedCards={flippedCards}
                         setFlippedCards={setFlippedCards}
                         confidenceRating={confidenceRating}
                         setConfidenceRating={setConfidenceRating}
-                        onBack={() => setActiveTab('exam-highlights')}
+                        onBack={() => setActiveTab('exam')}
                         onAction={showToast}
                     />
                 )}
@@ -236,6 +233,7 @@ export default function Dashboard() {
   );
 }
 
+// --- Sidebar Item ---
 function SidebarItem({ icon, label, active, brandColor, onClick }: any) {
   return (
     <button 
@@ -251,7 +249,8 @@ function SidebarItem({ icon, label, active, brandColor, onClick }: any) {
   );
 }
 
-function ExamView({ BRAND_PURPLE, files, selectedFiles, setSelectedFiles, uploadedFiles, setUploadedFiles, onViewBriefs }: any) {
+// --- Exam Preparation View ---
+function ExamView({ files, selectedFiles, setSelectedFiles, uploadedFiles, setUploadedFiles, onProceed }: any) {
     const allFiles = [...files, ...uploadedFiles];
 
     const handleFileUpload = () => {
@@ -282,41 +281,31 @@ function ExamView({ BRAND_PURPLE, files, selectedFiles, setSelectedFiles, upload
     return (
         <div className="max-w-[1000px] mx-auto">
             <header className="mb-8">
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h1 className="text-[32px] font-bold tracking-tight text-slate-900 flex items-center gap-3">
-                            Exam Mode Booster
-                        </h1>
-                        <p className="text-[#64748B] text-lg mt-2">
-                            {selectedFiles.length === 0 
-                                ? 'Upload or select documents to generate exam briefs'
-                                : `${selectedFiles.length} ${selectedFiles.length === 1 ? 'document' : 'documents'} selected`
-                            }
-                        </p>
-                    </div>
-                </div>
+                <h1 className="text-[32px] font-bold tracking-tight text-slate-900 flex items-center gap-3">
+                    <BrainCircuit className="text-[#581DC6]" size={32} />
+                    Exam Booster
+                </h1>
+                <p className="text-[#64748B] text-lg mt-2 font-medium">Select your study materials to unlock active recall tools.</p>
             </header>
 
-            {/* Compact Upload Box */}
             <button onClick={handleFileUpload} className="w-full border-2 border-dashed border-[#E2E8F0] rounded-[32px] bg-white p-8 flex flex-col items-center justify-center mb-12 transition-all hover:border-[#581DC680] group shadow-sm">
                 <div className="w-[64px] h-[64px] bg-[#F1F5F9] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform text-[#475569] group-hover:text-[#581DC6]"><Upload size={28} /></div>
-                <h3 className="text-[20px] font-bold mb-1">Upload Study Materials</h3>
-                <p className="text-[#64748B] text-[15px] mb-5 font-medium">Select documents to generate exam mode briefs</p>
+                <h3 className="text-[20px] font-bold mb-1">Add to SkimSync</h3>
+                <p className="text-[#64748B] text-[15px] mb-5 font-medium">Select new materials to boost your exam readiness</p>
                 <div className="bg-[#0F172A] text-white px-8 py-2.5 rounded-2xl font-bold text-[14px] group-hover:bg-[#581DC6] transition-colors shadow-lg">Choose Files</div>
             </button>
 
-            {/* Available Documents */}
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-[22px] font-bold flex items-center gap-2 text-slate-900">
-                    <Clock size={20} className="text-slate-400" />
-                    Available Documents
+                    <Files size={22} className="text-slate-400" />
+                    Available Materials
                 </h2>
                 {selectedFiles.length > 0 && (
                     <button
-                        onClick={onViewBriefs}
-                        className="px-6 py-2.5 bg-[#581DC6] text-white rounded-xl font-bold text-sm hover:bg-opacity-90 transition-all shadow-md flex items-center gap-2"
+                        onClick={onProceed}
+                        className="px-8 py-3 bg-[#581DC6] text-white rounded-xl font-bold text-sm hover:bg-opacity-90 transition-all shadow-md"
                     >
-                        Create Exam Briefs
+                        Create Exam Briefs →
                     </button>
                 )}
             </div>
@@ -324,460 +313,189 @@ function ExamView({ BRAND_PURPLE, files, selectedFiles, setSelectedFiles, upload
                 {allFiles.map((file: any) => {
                     const isSelected = selectedFiles.some((f: StudyFile) => f.id === file.id);
                     return (
-                        <ExamFileRow 
-                            key={file.id} 
-                            file={file} 
-                            BRAND_PURPLE={BRAND_PURPLE} 
-                            isSelected={isSelected}
-                            onSelect={() => toggleFileSelection(file)}
-                        />
+                        <div key={file.id} className={`bg-white border rounded-[24px] p-5 flex items-center justify-between cursor-pointer transition-all ${isSelected ? 'border-[#581DC6] bg-purple-50/20' : 'border-slate-100 hover:border-slate-200'}`} onClick={() => toggleFileSelection(file)}>
+                            <div className="flex items-center gap-4">
+                                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center ${isSelected ? 'bg-[#581DC6] border-[#581DC6]' : 'border-slate-300'}`}>
+                                    {isSelected && <CheckCircle2 size={16} className="text-white" />}
+                                </div>
+                                <div className="w-12 h-12 bg-purple-100 text-[#581DC6] rounded-xl flex items-center justify-center"><FileText size={22} /></div>
+                                <div>
+                                    <h4 className="font-bold text-slate-800">{file.name}</h4>
+                                    <p className="text-xs text-slate-500">{file.format} • {file.duration}</p>
+                                </div>
+                            </div>
+                            <LoadBadge load={file.load} />
+                        </div>
                     );
                 })}
-                {allFiles.length === 0 && (
-                    <div className="text-center py-12 text-slate-400">
-                        <p className="text-sm font-medium">No documents yet. Upload a file to get started!</p>
-                    </div>
-                )}
             </div>
         </div>
     );
 }
 
-function ExamFileRow({ file, BRAND_PURPLE, isSelected, onSelect }: any) {
-    return (
-        <div className={`bg-white border rounded-[24px] p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between cursor-pointer group ${isSelected ? `border-[#581DC6] ring-2 ring-[#581DC6]/10 bg-purple-50/30` : 'border-[#F1F5F9] hover:border-slate-200'}`} onClick={onSelect}>
-            <div className="flex items-center gap-4 flex-1">
-                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all ${
-                    isSelected 
-                        ? `bg-[#581DC6] border-[#581DC6]` 
-                        : 'border-slate-300 hover:border-slate-400'
-                }`}>
-                    {isSelected && <CheckCircle2 size={16} className="text-white" fill="white" />}
-                </div>
-
-                <div className="w-12 h-12 rounded-[14px] flex items-center justify-center bg-[#F3E8FF] text-[#581DC6] shrink-0">
-                    <FileText size={22} />
-                </div>
-                <div className="min-w-0">
-                    <h4 className="font-bold text-[16px] leading-tight text-slate-800 truncate mb-1">{file.name}</h4>
-                    <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-[#94A3B8] text-xs font-medium">
-                        <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 text-[#64748B] text-[10px] font-bold uppercase">
-                            {file.format}
-                        </span>
-                        <span className="w-1 h-1 rounded-full bg-slate-200" />
-                        <span className="flex items-center gap-1">
-                            <Clock size={12} className="text-slate-300" />
-                            {file.date}
-                        </span>
-                        <span className="w-1 h-1 rounded-full bg-slate-200" />
-                        <span>{file.size}</span>
-                        <span className="w-1 h-1 rounded-full bg-slate-200" />
-                        <span className="flex items-center gap-1 text-[#581DC6]">
-                            <Timer size={12} />
-                            {file.duration}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex items-center gap-3 px-6">
-                <div className="hidden sm:block">
-                    <LoadBadge load={file.load} />
-                </div>
-            </div>
-        </div>
-    );
-}
-
-// Generate highlights helper function
-const generateHighlights = (file: StudyFile) => {
-    const highlightDatabase: any = {
-        '1': [ // Psychology
-            { type: 'definition', title: 'Classical Conditioning', content: 'A learning process where a neutral stimulus becomes associated with a meaningful stimulus to produce a behavioral response.' },
-            { type: 'definition', title: 'Operant Conditioning', content: 'A method of learning that employs rewards and punishments for behavior.' },
-            { type: 'question', title: 'Test Potential', content: 'What are the three main differences between classical and operant conditioning?' },
-            { type: 'summary', title: 'Core Principle', content: 'Behavior followed by pleasant consequences is likely to be repeated.' }
-        ],
-        '2': [ // Chemistry
-            { type: 'definition', title: 'Organic Compounds', content: 'Compounds that contain carbon atoms bonded to hydrogen and other elements, forming the backbone of life.' },
-            { type: 'definition', title: 'Stereoisomerism', content: 'The arrangement of atoms in space that differs between molecules with the same molecular formula.' },
-            { type: 'question', title: 'Exam Focus', content: 'How do you differentiate between E1 and E2 elimination mechanisms in organic chemistry?' },
-            { type: 'summary', title: 'Key Concept', content: 'Reaction mechanisms depend on substrate structure, nucleophile strength, and solvent polarity.' }
-        ],
-        '3': [ // Economics
-            { type: 'definition', title: 'Inflation', content: 'A sustained increase in the general price level of goods and services in an economy over time.' },
-            { type: 'definition', title: 'Monetary Policy', content: 'Actions taken by central banks to influence the money supply and interest rates.' },
-            { type: 'question', title: 'Critical Question', content: 'How does quantitative easing affect long-term economic growth?' },
-            { type: 'summary', title: 'Essential Point', content: 'Central banks balance inflation control with employment and growth objectives.' }
-        ],
-        '4': [ // Discrete Math
-            { type: 'definition', title: 'Proof by Induction', content: 'A mathematical proof technique where you prove a base case, then assume the statement is true for n and prove it for n+1.' },
-            { type: 'definition', title: 'Predicate Logic', content: 'An extension of propositional logic that uses predicates and quantifiers to express more complex statements.' },
-            { type: 'question', title: 'Test Question', content: 'Prove that the sum of the first n natural numbers equals n(n+1)/2 using mathematical induction.' },
-            { type: 'summary', title: 'Key Takeaway', content: 'Logic proofs require careful reasoning and complete coverage of all cases.' }
-        ]
+// --- Exam Mode Results View (Active Recall Tools) ---
+function PostBriefView({ flippedCards, setFlippedCards, confidenceRating, setConfidenceRating, onBack, onAction }: any) {
+    const toggleCard = (index: number) => {
+        const next = new Set(flippedCards);
+        if (next.has(index)) next.delete(index);
+        else next.add(index);
+        setFlippedCards(next);
     };
-    
-    return highlightDatabase[file.id] || [
-        { type: 'definition', title: 'Key Definition', content: 'Extract and master the most important concepts from your document.' },
-        { type: 'question', title: 'Test Potential', content: 'Focus on high-probability exam questions.' },
-        { type: 'summary', title: 'Core Summary', content: 'Retain only the critical information needed for success.' }
-    ];
-};
 
-function ExamHighlightsView({ BRAND_PURPLE, selectedFiles, examModeEnabled, setExamModeEnabled, onBack, onProceed }: any) {
-    const allHighlights = selectedFiles.flatMap((file: StudyFile) => {
-        const fileHighlights = generateHighlights(file);
-        return fileHighlights.map((h: any) => ({ ...h, fileId: file.id, fileName: file.name }));
-    });
-
-    const filteredHighlights = examModeEnabled 
-        ? allHighlights.filter((h: any) => h.type === 'definition' || h.type === 'question')
-        : allHighlights;
+    const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+    const item = { hidden: { y: 20, opacity: 0 }, show: { y: 0, opacity: 1 } };
 
     return (
-        <div className="max-w-[1000px] mx-auto">
+        <div className="max-w-[1000px] mx-auto pb-20">
             <header className="mb-8">
-                <div className="flex items-center gap-4 mb-6">
-                    <button
-                        onClick={onBack}
-                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-slate-600"
-                    >
-                        ← Back
-                    </button>
-                    <div className="flex-1">
-                        <h1 className="text-[32px] font-bold tracking-tight text-slate-900 flex items-center gap-3">
-                            <Sparkles className="text-purple-500" size={32} />
-                            Exam Priority Highlights
-                        </h1>
-                        <p className="text-[#64748B] text-lg mt-2">
-                            From {selectedFiles.length} {selectedFiles.length === 1 ? 'document' : 'documents'}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-4 bg-purple-50 border border-purple-100 rounded-2xl px-6 py-4 w-fit">
-                    <div className="flex items-center gap-3 flex-1">
-                        <div className={`w-3 h-3 rounded-full transition-colors ${examModeEnabled ? 'bg-purple-500' : 'bg-slate-300'}`} />
-                        <div>
-                            <p className="text-[10px] font-black uppercase text-purple-700 tracking-wider">Mode</p>
-                            <p className="text-sm font-bold text-slate-700">{examModeEnabled ? 'Exam Mode' : 'Full Document'}</p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => setExamModeEnabled(!examModeEnabled)}
-                        className={`ml-4 px-4 py-2 rounded-lg font-bold text-sm transition-all ${
-                            examModeEnabled
-                                ? 'bg-purple-600 text-white hover:bg-purple-700'
-                                : 'bg-white text-purple-600 border border-purple-200 hover:bg-purple-50'
-                        }`}
-                    >
-                        {examModeEnabled ? 'Disable' : 'Enable'}
-                    </button>
-                </div>
+                <button onClick={onBack} className="mb-4 text-slate-400 font-bold hover:text-slate-600 transition-colors">← Back to Setup</button>
+                <h1 className="text-3xl font-black text-slate-900 flex items-center gap-3">
+                   Exam Modes
+                </h1>
             </header>
 
-            <div className="bg-white border border-slate-100 rounded-[28px] p-6 shadow-sm">
-                <div className="mb-6">
-                    <h2 className="text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
-                        <ListFilter size={20} className="text-slate-400" />
-                        {examModeEnabled ? 'Exam Mode Only' : 'All Content'}
-                    </h2>
-                    <p className="text-xs text-slate-500">
-                        {filteredHighlights.length} highlights extracted
-                    </p>
-                </div>
+            <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* 1. Flashcards */}
+                    <motion.div variants={item} className="bg-white border border-slate-100 rounded-[28px] p-6 shadow-sm">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center"><CreditCard size={20} /></div>
+                            <h3 className="font-bold text-slate-900">Hero Fact Flashcards</h3>
+                        </div>
+                        <div 
+                            onClick={() => toggleCard(0)}
+                            className="bg-slate-50 rounded-2xl p-8 h-40 flex flex-col items-center justify-center border border-dashed border-slate-200 cursor-pointer hover:border-blue-400 transition-all"
+                        >
+                            <AnimatePresence mode="wait">
+                                {!flippedCards.has(0) ? (
+                                    <motion.h4 key="front" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="text-lg font-black text-slate-800">Classical Conditioning</motion.h4>
+                                ) : (
+                                    <motion.p key="back" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="text-sm text-center text-slate-600">A learning process that occurs through associations between an environmental stimulus and a naturally occurring stimulus.</motion.p>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                        <button onClick={() => onAction("Launching Active Recall Session...")} className="w-full mt-4 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm">Practice Flashcards</button>
+                    </motion.div>
 
-                <div className="space-y-3">
-                    {filteredHighlights.length > 0 ? (
-                        filteredHighlights.map((item: any, i: number) => (
-                            <div key={i} className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 group">
-                                <div className={`w-10 h-10 rounded-xl shrink-0 flex items-center justify-center font-bold text-sm ${
-                                    item.type === 'definition' ? 'bg-blue-50 text-blue-600' : 
-                                    item.type === 'question' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'
-                                }`}>
-                                    {item.type === 'definition' ? 'D' : 
-                                     item.type === 'question' ? 'Q' : 'S'}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
-                                        <h4 className="font-bold text-[14px] text-slate-800">{item.title}</h4>
-                                        <div className="flex items-center gap-2">
-                                            <span className={`text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${
-                                                item.type === 'definition' ? 'text-blue-600' :
-                                                item.type === 'question' ? 'text-rose-600' : 'text-emerald-600'
-                                            }`}>{item.type}</span>
-                                            <span className="text-[9px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{item.fileName}</span>
-                                        </div>
-                                    </div>
-                                    <p className="text-slate-600 text-sm leading-relaxed">{item.content}</p>
-                                </div>
-                                <button className="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-[#581DC6] transition-all shrink-0">
-                                    <ChevronRight size={20} />
-                                </button>
+                    {/* 2. Cheat Sheet */}
+                    <motion.div variants={item} className="bg-[#0F172A] rounded-[28px] p-6 shadow-xl text-white flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-10 h-10 bg-white/10 text-white rounded-xl flex items-center justify-center"><Download size={20} /></div>
+                                <h3 className="font-bold">Priority "Cheat Sheet"</h3>
                             </div>
-                        ))
-                    ) : (
-                        <p className="text-center text-slate-400 py-12 text-sm">No highlights found</p>
-                    )}
+                            <p className="text-sm text-slate-400 mb-6">Download a tangible one-page artifact containing all essential definitions and cues from your selected documents.</p>
+                        </div>
+                        <button onClick={() => onAction("Preparing SkimSync PDF Export...")} className="w-full py-3 bg-emerald-500 text-white rounded-xl font-bold text-sm">Download Cheat Sheet</button>
+                    </motion.div>
                 </div>
-            </div>
 
-            <div className="mt-12">
-                <h3 className="text-[22px] font-bold mb-6 flex items-center gap-2 text-slate-900">
-                    <Files size={20} className="text-slate-400" />
-                    Selected Documents ({selectedFiles.length})
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {selectedFiles.map((file: StudyFile) => (
-                        <div key={file.id} className="bg-white border border-slate-100 rounded-[20px] p-4 shadow-sm">
-                            <div className="flex items-start gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-purple-50 text-[#581DC6] flex items-center justify-center shrink-0 mt-0.5">
-                                    <FileText size={18} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="font-bold text-sm text-slate-800 truncate">{file.name}</h4>
-                                    <p className="text-xs text-slate-500 mt-1">{file.format} • {file.duration}</p>
-                                </div>
+                {/* 3. Confidence Meter */}
+                <motion.div variants={item} className="bg-amber-50 border border-amber-100 rounded-[28px] p-8">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div>
+                            <h3 className="text-xl font-bold text-amber-900">Confidence Meter</h3>
+                            <p className="text-amber-700/70 text-sm font-medium">How ready do you feel for this topic?</p>
+                        </div>
+                        <div className="flex gap-2">
+                            {[1, 2, 3, 4, 5].map((num) => (
+                                <button 
+                                    key={num}
+                                    onClick={() => setConfidenceRating(num)}
+                                    className={`w-12 h-12 rounded-xl font-bold text-lg transition-all ${confidenceRating === num ? 'bg-amber-500 text-white shadow-lg scale-105' : 'bg-white text-amber-600 hover:bg-amber-100'}`}
+                                >{num}</button>
+                            ))}
+                        </div>
+                    </div>
+                    {confidenceRating && confidenceRating <= 2 && (
+                        <div className="mt-6 p-4 bg-white/50 rounded-xl flex items-center gap-3 text-sm text-amber-800 border border-amber-200">
+                            <AlertCircle size={18} />
+                            <p>You seem unsure. SkimSync suggests replaying the <span className="font-bold underline cursor-pointer">Summary Audio Chunks</span>.</p>
+                        </div>
+                    )}
+                </motion.div>
+
+                {/* 4. Focus Visualizer */}
+                <motion.div variants={item} className="bg-white border border-slate-100 rounded-[32px] p-8 shadow-sm">
+                    <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2"><BarChart3 size={24} className="text-purple-500" /> Focus Visualizer</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Time Saved</span>
+                            <div className="flex items-baseline gap-2"><span className="text-3xl font-black text-purple-600">20</span><span className="text-sm font-bold text-slate-500">pages</span></div>
+                            <p className="text-xs text-emerald-600 flex items-center gap-1 font-bold mt-1"><Zap size={10} fill="currentColor"/> processed in 6m</p>
+                        </div>
+                        <div className="md:col-span-2">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Keywords Mastered</span>
+                            <div className="flex flex-wrap gap-2">
+                                {['Conditioning', 'Inflation', 'Proofs', 'Mechanism', 'Organic', 'Macro', 'Induction'].map(t => <span key={t} className="px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-bold border border-slate-100">{t}</span>)}
                             </div>
                         </div>
-                    ))}
-                </div>
-            </div>
+                    </div>
+                </motion.div>
+            </motion.div>
         </div>
     );
 }
 
-function FilesView({ 
-  BRAND_PURPLE, 
-  files, 
-  searchQuery, 
-  setSearchQuery, 
-  selectedFormats, 
-  setSelectedFormats, 
-  selectedLoads, 
-  setSelectedLoads, 
-  onAction,
-  showFilters,
-  setShowFilters 
-}: any) {
-  const formats = ["PDF", "PPTX", "DOCX", "TXT"];
-  const loads = ["Low", "Medium", "High"];
+// --- Other Views ---
+function HomeView({ files, onUpload, onAction }: any) {
+    return (
+      <div className="max-w-[1000px] mx-auto">
+        <h1 className="text-[32px] font-black text-slate-900 mb-8 tracking-tight">Welcome to SkimSync</h1>
+        <button onClick={onUpload} className="w-full border-2 border-dashed border-slate-200 rounded-[32px] bg-white p-12 flex flex-col items-center mb-12 hover:border-purple-300 transition-all group">
+          <Upload size={32} className="text-slate-300 mb-4 group-hover:scale-110 transition-transform" />
+          <h3 className="text-lg font-bold">Upload to SkimSync</h3>
+          <p className="text-sm text-slate-500 mb-6">Drop your lecture notes or study guides here</p>
+          <div className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-bold group-hover:bg-[#581DC6]">Select Files</div>
+        </button>
+        <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Clock size={20} className="text-slate-400" /> Recent Study Sessions</h2>
+        <div className="space-y-4">
+            {files.slice(0, 3).map((f:any) => (
+                <div key={f.id} className="bg-white p-5 rounded-[24px] border border-slate-100 flex items-center justify-between hover:shadow-md transition-all">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600"><FileText size={20} /></div>
+                      <span className="font-bold text-slate-700">{f.name}</span>
+                    </div>
+                    <button onClick={() => onAction("Opening focus reader...")} className="bg-[#581DC6] text-white px-6 py-2 rounded-xl font-bold text-sm">Study Now</button>
+                </div>
+            ))}
+        </div>
+      </div>
+    );
+}
 
-  const toggleFilter = (item: string, list: string[], setList: (val: string[]) => void) => {
-    if (list.includes(item)) {
-      setList(list.filter(i => i !== item));
-    } else {
-      setList([...list, item]);
-    }
-  };
-
-  const activeFilterCount = selectedFormats.length + selectedLoads.length;
-  const hasFilters = activeFilterCount > 0 || searchQuery !== "";
-
-  return (
-    <div className="max-w-[1000px] mx-auto">
-      <header className="mb-8">
-        <div className="flex justify-between items-end mb-6">
-            <div>
-                <h1 className="text-[32px] font-bold tracking-tight text-slate-900">All Files</h1>
-                <p className="text-[#64748B] text-lg mt-1 font-medium">Total of {files.length} study documents</p>
-            </div>
-            <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border font-bold text-sm transition-all shadow-sm ${
-                    showFilters 
-                    ? 'bg-slate-800 text-white border-slate-800' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <Filter size={16} />
-                  Filters
-                  {activeFilterCount > 0 && (
-                    <span className="ml-1 w-5 h-5 rounded-full bg-[#581DC6] text-white text-[10px] flex items-center justify-center">
-                      {activeFilterCount}
-                    </span>
-                  )}
-                  {showFilters ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </button>
-
+function FilesView({ files, searchQuery, setSearchQuery, onAction }: any) {
+    return (
+        <div className="max-w-[1000px] mx-auto">
+            <div className="flex justify-between items-center mb-8">
+                <h1 className="text-3xl font-black">SkimSync Library</h1>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input 
-                        type="text" 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search files..." 
-                        className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#581DC640] w-64 shadow-sm transition-all" 
-                    />
+                    <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search your files..." className="pl-10 pr-4 py-2.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-purple-100" />
                 </div>
             </div>
+            <div className="bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-sm">
+                <table className="w-full text-left">
+                    <thead className="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <tr><th className="px-6 py-5">Material Name</th><th className="px-6 py-5">Format</th><th className="px-6 py-5">Complexity</th><th className="px-6 py-5 text-right">Action</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                        {files.map((f:any) => (
+                            <tr key={f.id} className="group hover:bg-slate-50/50 transition-colors">
+                                <td className="px-6 py-5 font-bold text-slate-700">{f.name}</td>
+                                <td className="px-6 py-5 text-xs text-slate-400 font-bold">{f.format}</td>
+                                <td className="px-6 py-5"><LoadBadge load={f.load} /></td>
+                                <td className="px-6 py-5 text-right"><button onClick={() => onAction("Opening Document...")} className="p-2 text-slate-300 group-hover:text-purple-600 transition-colors"><ExternalLink size={18} /></button></td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
-
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden mb-6"
-            >
-              <div className="flex flex-wrap items-center gap-8 py-6 border-y border-slate-100">
-                  <div className="flex flex-col gap-2">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Format</span>
-                      <div className="flex gap-1.5">
-                          {formats.map(f => (
-                              <button key={f} onClick={() => toggleFilter(f, selectedFormats, setSelectedFormats)} className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all border ${selectedFormats.includes(f) ? 'bg-[#581DC6] text-white border-[#581DC6]' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>{f}</button>
-                          ))}
-                      </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Load Intensity</span>
-                      <div className="flex gap-1.5">
-                          {loads.map(l => (
-                              <button key={l} onClick={() => toggleFilter(l, selectedLoads, setSelectedLoads)} className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all border ${selectedLoads.includes(l) ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>{l}</button>
-                          ))}
-                      </div>
-                  </div>
-                  {hasFilters && (
-                      <button onClick={() => {setSelectedFormats([]); setSelectedLoads([]); setSearchQuery("");}} className="ml-auto flex items-center gap-1.5 text-[#581DC6] text-xs font-bold hover:underline">
-                          <RotateCcw size={14} />
-                          Reset All
-                      </button>
-                  )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </header>
-      
-      <div className="bg-white border border-slate-100 rounded-[24px] shadow-sm overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-slate-50/50 border-b border-slate-100">
-            <tr>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">File Name</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Format</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Load</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {files.map((file: any) => (
-              <tr key={file.id} className="hover:bg-slate-50/30 transition-colors group">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-50 text-[#581DC6] rounded-lg"><FileText size={18} /></div>
-                    <span className="font-bold text-[14px] text-slate-700">{file.name}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-center">
-                  <span className="bg-[#F1F5F9] px-2.5 py-1 rounded text-[10px] font-bold text-[#64748B] border border-slate-200 uppercase">{file.format}</span>
-                </td>
-                <td className="px-6 py-4"><LoadBadge load={file.load} /></td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => onAction(`Opening ${file.name}...`)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"><ExternalLink size={16}/></button>
-                    <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"><MoreVertical size={16}/></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+    );
 }
 
 function LoadBadge({ load }: { load: string }) {
-  const styles: any = {
-    Low: 'bg-[#F0FDF4] text-[#166534] border-[#DCFCE7]',
-    Medium: 'bg-[#FEFCE8] text-[#854D0E] border-[#FEF9C3]',
-    High: 'bg-[#FEF2F2] text-[#991B1B] border-[#FEE2E2]',
-  };
-  return <span className={`text-[11px] font-bold px-2.5 py-1 rounded-md border ${styles[load]}`}>{load} Load</span>;
-}
-
-function HomeView({ BRAND_PURPLE, files, onUpload, onAction }: any) {
-  return (
-    <div className="max-w-[1000px] mx-auto">
-      <header className="mb-8">
-        <h1 className="text-[32px] font-bold tracking-tight text-slate-900">Skim-Sync</h1>
-        <p className="text-[#64748B] text-lg mt-1">Ready to tackle your study sessions?</p>
-      </header>
-      
-      {/* Compact Upload Box */}
-      <button onClick={onUpload} className="w-full border-2 border-dashed border-[#E2E8F0] rounded-[32px] bg-white p-8 flex flex-col items-center justify-center mb-12 transition-all hover:border-[#581DC680] group shadow-sm">
-        <div className="w-[64px] h-[64px] bg-[#F1F5F9] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform text-[#475569] group-hover:text-[#581DC6]"><Upload size={28} /></div>
-        <h3 className="text-[20px] font-bold mb-1">Upload Study Materials</h3>
-        <p className="text-[#64748B] text-[15px] mb-5 font-medium">Drag and drop files here, or click to browse</p>
-        <div className="bg-[#0F172A] text-white px-8 py-2.5 rounded-2xl font-bold text-[14px] group-hover:bg-[#581DC6] transition-colors shadow-lg">Choose Files</div>
-      </button>
-
-      <h2 className="text-[22px] font-bold mb-6 flex items-center gap-2 text-slate-900">
-        <Clock size={20} className="text-slate-400" />
-        Recent Files
-      </h2>
-      <div className="flex flex-col gap-4">
-        {files.slice(0, 4).map((file: any) => (
-          <FileRow key={file.id} file={file} BRAND_PURPLE={BRAND_PURPLE} onAction={onAction} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function FileRow({ file, BRAND_PURPLE, onAction }: any) {
-  return (
-    <div className="bg-white border border-[#F1F5F9] rounded-[24px] p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
-      <div className="flex items-center gap-4 flex-1">
-        <div className="w-12 h-12 rounded-[14px] flex items-center justify-center bg-[#F3E8FF] text-[#581DC6] shrink-0">
-          <FileText size={22} />
-        </div>
-        <div className="min-w-0">
-          <h4 className="font-bold text-[16px] leading-tight text-slate-800 truncate mb-1">{file.name}</h4>
-          <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-[#94A3B8] text-xs font-medium">
-            <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 text-[#64748B] text-[10px] font-bold uppercase">
-              {file.format}
-            </span>
-            <span className="w-1 h-1 rounded-full bg-slate-200" />
-            <span className="flex items-center gap-1">
-              <Clock size={12} className="text-slate-300" />
-              {file.date}
-            </span>
-            <span className="w-1 h-1 rounded-full bg-slate-200" />
-            <span>{file.size}</span>
-            <span className="w-1 h-1 rounded-full bg-slate-200" />
-            <span className="flex items-center gap-1 text-[#581DC6]">
-              <Timer size={12} />
-              {file.duration}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-6 px-6">
-        <div className="hidden sm:block">
-            <LoadBadge load={file.load} />
-        </div>
-        <div className="h-8 w-[1px] bg-slate-100" />
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => onAction(`Entering focus mode...`)} 
-            className="text-white px-5 py-2.5 rounded-xl font-bold text-[13px] hover:opacity-90 transition-opacity shadow-sm" 
-            style={{ backgroundColor: BRAND_PURPLE }}
-          >
-            Start Learning
-          </button>
-          <button 
-            onClick={() => onAction(`Preparing exam mode...`)} 
-            className="px-5 py-2.5 rounded-xl font-bold text-[13px] bg-[#FDFBFF] text-[#581DC6] border border-[#F3E8FF] hover:bg-[#F3E8FF] transition-colors"
-          >
-            Exam Mode
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+    const styles: any = { Low: 'bg-green-50 text-green-700 border-green-100', Medium: 'bg-amber-50 text-amber-700 border-amber-100', High: 'bg-rose-50 text-rose-700 border-rose-100' };
+    return <span className={`text-[11px] font-bold px-3 py-1 rounded-md border ${styles[load]}`}>{load} Load</span>;
 }
