@@ -151,7 +151,7 @@ export default function LandingPage() {
             className="max-w-xl text-center lg:text-left mx-auto lg:mx-0 order-2 lg:order-1"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.2] lg:leading-[1.1] mb-6 text-gray-900">
-              Intelligent audio learning platform
+              Intelligent Audio Learning Platform
             </h1>
             <p className="text-base md:text-lg text-gray-600 mb-8 leading-relaxed max-w-lg mx-auto lg:mx-0">
               Process multiple file formats into structured, concise, and interactive audio study guides.
