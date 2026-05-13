@@ -45,7 +45,7 @@ const ProfileDashboard = () => {
           <img 
             src="/images/logo.png" 
             alt="Echo Logo" 
-            className="h-10 md:h-14 w-auto object-contain cursor-pointer" 
+            className="h-10 md:h-10 w-auto object-contain cursor-pointer" 
             style={{ filter: 'invert(18%) sepia(88%) saturate(4535%) hue-rotate(262deg) brightness(82%) contrast(92%)' }}
           />
         </motion.div>
