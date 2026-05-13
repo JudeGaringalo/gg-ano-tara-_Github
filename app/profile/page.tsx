@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
@@ -16,18 +16,56 @@ const chartData = [
   { name: 'Notes', value: 15 },
 ];
 
+type ProfileFormState = {
+  fullName: string;
+  nickname: string;
+  username: string;
+  gender: string;
+  email: string;
+};
+
 const ProfileDashboard = () => {
   const router = useRouter();
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState('analytics');
   const [isEditing, setIsEditing] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [profileForm, setProfileForm] = useState<ProfileFormState>({
+    fullName: '',
+    nickname: '',
+    username: '',
+    gender: 'Other',
+    email: '',
+  });
 
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push('/login');
+        return;
       }
+
+      setUser(session.user);
+
+      const authMetadata = session.user.user_metadata ?? {};
+      const email = session.user.email ?? '';
+      const fallbackName = email ? email.split('@')[0] : 'User';
+
+      const { data: profileData } = await supabase
+        .from('profile')
+        .select('nickname, username')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      setProfileForm({
+        fullName: authMetadata.full_name ?? authMetadata.name ?? fallbackName,
+        nickname: profileData?.nickname ?? authMetadata.nickname ?? fallbackName,
+        username: profileData?.username ?? authMetadata.username ?? fallbackName,
+        gender: authMetadata.gender ?? 'Other',
+        email,
+      });
     };
     checkUser();
   }, [router, supabase]);
@@ -35,6 +73,40 @@ const ProfileDashboard = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/login');
+  };
+
+  const handleSaveProfile = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    setIsSaving(true);
+
+    const [{ error: profileError }, { error: authError }] = await Promise.all([
+      supabase
+        .from('profile')
+        .upsert({
+          id: session.user.id,
+          nickname: profileForm.nickname,
+          username: profileForm.username,
+        }),
+      supabase.auth.updateUser({
+        data: {
+          full_name: profileForm.fullName,
+          name: profileForm.fullName,
+          nickname: profileForm.nickname,
+          username: profileForm.username,
+          gender: profileForm.gender,
+        },
+      }),
+    ]);
+
+    setIsSaving(false);
+
+    if (profileError || authError) {
+      return;
+    }
+
+    setIsEditing(false);
   };
 
   const pageVariants = {
@@ -114,12 +186,24 @@ const ProfileDashboard = () => {
             className="bg-[#631DC3] rounded-3xl p-8 md:p-12 mb-10 text-white shadow-xl flex flex-col md:flex-row items-center md:items-center justify-between relative overflow-hidden"
           >
             <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8 z-10 text-center md:text-left">
-              <motion.div whileHover={{ rotate: 5, scale: 1.05 }} className="w-24 h-24 md:w-28 md:h-28 bg-[#D9D9D9] rounded-full border-4 border-white/20 shadow-lg" />
+              <motion.div whileHover={{ rotate: 5, scale: 1.05 }} className="w-24 h-24 md:w-28 md:h-28 bg-[#D9D9D9] rounded-full border-4 border-white/20 shadow-lg overflow-hidden flex items-center justify-center">
+                {user?.user_metadata?.avatar_url || user?.user_metadata?.picture ? (
+                  <img
+                    src={user.user_metadata.avatar_url || user.user_metadata.picture}
+                    alt={profileForm.fullName || 'User profile picture'}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-3xl md:text-4xl font-black text-[#631DC3]">
+                    {(profileForm.nickname || profileForm.fullName || profileForm.email || 'U').charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </motion.div>
               <div className="space-y-1">
-                <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Juan Dela Cruz</h1>
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{profileForm.fullName || 'User'}</h1>
                 <div className="flex items-center justify-center md:justify-start gap-2 opacity-80">
                   <img src="/images/sms.png" className="w-4 h-4 brightness-200" alt="Email icon" />
-                  <p className="text-sm font-medium">juandelacruz@gmail.com</p>
+                  <p className="text-sm font-medium">{profileForm.email || 'No email found'}</p>
                 </div>
               </div>
             </div>
@@ -182,17 +266,17 @@ const ProfileDashboard = () => {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 md:gap-y-8">
-                  <motion.div variants={itemVariants}><InputBlock label="Full Name" placeholder="Juan Dela Cruz" disabled={!isEditing} /></motion.div>
-                  <motion.div variants={itemVariants}><InputBlock label="Nick Name" placeholder="Juan" disabled={!isEditing} /></motion.div>
-                  <motion.div variants={itemVariants}><SelectBlock label="Gender" options={['Male', 'Female', 'Other']} disabled={!isEditing} /></motion.div>
-                  <motion.div variants={itemVariants}><InputBlock label="Email Address" placeholder="juandelacruz@gmail.com" disabled={!isEditing} /></motion.div>
+                  <motion.div variants={itemVariants}><InputBlock label="Full Name" value={profileForm.fullName} onChange={(value: string) => setProfileForm((current) => ({ ...current, fullName: value }))} disabled={!isEditing} /></motion.div>
+                  <motion.div variants={itemVariants}><InputBlock label="Nick Name" value={profileForm.nickname} onChange={(value: string) => setProfileForm((current) => ({ ...current, nickname: value }))} disabled={!isEditing} /></motion.div>
+                  <motion.div variants={itemVariants}><SelectBlock label="Gender" value={profileForm.gender} onChange={(value: string) => setProfileForm((current) => ({ ...current, gender: value }))} options={['Male', 'Female', 'Other']} disabled={!isEditing} /></motion.div>
+                  <motion.div variants={itemVariants}><InputBlock label="Email Address" value={profileForm.email} disabled /></motion.div>
                 </div>
 
                 <AnimatePresence>
                   {isEditing && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-12 pt-8 border-t border-gray-50 flex flex-col sm:flex-row justify-end gap-4">
                       <button onClick={() => setIsEditing(false)} className="px-6 py-2 text-slate-400 font-bold hover:text-red-500 transition-colors w-full sm:w-auto">Cancel</button>
-                      <button onClick={() => setIsEditing(false)} className="px-8 py-2.5 bg-[#F5A623] text-[#1A1D23] rounded-xl font-bold shadow-lg shadow-orange-500/10 hover:brightness-110 transition-all w-full sm:w-auto">Save Changes</button>
+                      <button onClick={handleSaveProfile} disabled={isSaving} className="px-8 py-2.5 bg-[#F5A623] text-[#1A1D23] rounded-xl font-bold shadow-lg shadow-orange-500/10 hover:brightness-110 transition-all w-full sm:w-auto disabled:opacity-60 disabled:cursor-not-allowed">{isSaving ? 'Saving...' : 'Save Changes'}</button>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -237,18 +321,18 @@ const AchievementCard = ({ title, desc, icon, active = false }: any) => (
   </div>
 );
 
-const InputBlock = ({ label, placeholder, disabled }: any) => (
+const InputBlock = ({ label, value, onChange, disabled }: any) => (
   <div className="space-y-3 text-left">
     <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">{label}</label>
-    <input disabled={disabled} className={`w-full border border-gray-100 rounded-xl px-5 py-4 text-sm font-medium outline-none transition-all ${disabled ? 'bg-[#F9FAFB] opacity-80' : 'bg-white ring-2 ring-[#F5A623]/20 focus:ring-[#F5A623]'}`} placeholder={placeholder} />
+    <input value={value} onChange={(event) => onChange?.(event.target.value)} disabled={disabled} className={`w-full border border-gray-100 rounded-xl px-5 py-4 text-sm font-medium outline-none transition-all ${disabled ? 'bg-[#F9FAFB] opacity-80' : 'bg-white ring-2 ring-[#F5A623]/20 focus:ring-[#F5A623]'}`} />
   </div>
 );
 
-const SelectBlock = ({ label, options, disabled }: any) => (
+const SelectBlock = ({ label, value, onChange, options, disabled }: any) => (
   <div className="space-y-3 text-left">
     <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">{label}</label>
-    <select disabled={disabled} className={`w-full border border-gray-100 rounded-xl px-5 py-4 text-sm font-medium outline-none appearance-none transition-all ${disabled ? 'bg-[#F9FAFB] opacity-80' : 'bg-white ring-2 ring-[#F5A623]/20 focus:ring-[#F5A623]'}`}>
-      {options.map((opt: string) => <option key={opt}>{opt}</option>)}
+    <select value={value} onChange={(event) => onChange?.(event.target.value)} disabled={disabled} className={`w-full border border-gray-100 rounded-xl px-5 py-4 text-sm font-medium outline-none appearance-none transition-all ${disabled ? 'bg-[#F9FAFB] opacity-80' : 'bg-white ring-2 ring-[#F5A623]/20 focus:ring-[#F5A623]'}`}>
+      {options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
     </select>
   </div>
 );

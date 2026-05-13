@@ -4,6 +4,6 @@ npm install pdf-lib mammoth xlsx officeparser
 npm install framer-motion
 npm install @supabase/ssr
 npm install gsap @gsap/react framer-motion
-npm install @studio-freight/react-lenis --legacy-peer-deps
+npm install @studio-freight/react-lenis --legacy-peer-deeps
 npm install pdf-parse mammoth xlsx groq-sdk
 npm i groq-sdk mammoth xlsx pdf-parse @napi-rs/canvas
