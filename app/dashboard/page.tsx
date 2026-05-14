@@ -28,6 +28,7 @@ import {
   FolderOpen,
   RefreshCcw,
   AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ReactLenis, useLenis } from "@studio-freight/react-lenis";
@@ -114,6 +115,7 @@ export default function Dashboard() {
 
   const [isUploading, setIsUploading] = useState(false);
   const [isCheckingLength, setIsCheckingLength] = useState(false);
+  const [isDeletingFiles, setIsDeletingFiles] = useState(false);
 
   const [activeTab, setActiveTab] = useState<TabType>("home");
   const [files, setFiles] = useState<StudyFile[]>([]);
@@ -135,6 +137,9 @@ export default function Dashboard() {
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
   const [confidenceRating, setConfidenceRating] = useState<number | null>(null);
   const [recentlyUploaded, setRecentlyUploaded] = useState<StudyFile[]>([]);
+  const [vaultSelectedFileIds, setVaultSelectedFileIds] = useState<Set<string>>(
+    new Set()
+  );
 
   const [isCameraOpen, setIsCameraOpen] = useState(false);
 
@@ -250,6 +255,11 @@ export default function Dashboard() {
         prev.filter((item: StudyFile) => item.id !== file.id)
       );
       setSkimSyncFiles((prev) => prev.filter((item) => item.id !== file.id));
+      setVaultSelectedFileIds((prev) => {
+        const next = new Set(prev);
+        next.delete(file.id);
+        return next;
+      });
     } catch (error) {
       console.error("Delete rejected file failed:", error);
     }
@@ -432,6 +442,7 @@ export default function Dashboard() {
     setSkimSyncFiles(targetFiles);
     setActiveTab("skim-sync");
     setRecentlyUploaded([]);
+    setVaultSelectedFileIds(new Set());
   };
 
   const handleStartSkimSync = async (fileOrFiles: StudyFile | StudyFile[]) => {
@@ -558,6 +569,72 @@ export default function Dashboard() {
     router.push("/login");
   };
 
+  const toggleVaultFileSelection = (fileId: string) => {
+    setVaultSelectedFileIds((prev) => {
+      const next = new Set(prev);
+
+      if (next.has(fileId)) {
+        next.delete(fileId);
+      } else {
+        next.add(fileId);
+      }
+
+      return next;
+    });
+  };
+
+  const clearVaultSelection = () => {
+    setVaultSelectedFileIds(new Set());
+  };
+
+  const selectAllVisibleVaultFiles = (visibleFiles: StudyFile[]) => {
+    setVaultSelectedFileIds(new Set(visibleFiles.map((file) => file.id)));
+  };
+
+  const handleSkimSyncSelectedVaultFiles = () => {
+    if (selectedVaultFiles.length === 0) {
+      showToast("Select at least one file to Skim-Sync.", "info");
+      return;
+    }
+
+    handleStartSkimSync(selectedVaultFiles);
+  };
+
+  const handleDeleteSelectedVaultFiles = async () => {
+    if (selectedVaultFiles.length === 0) {
+      showToast("Select at least one file to delete.", "info");
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      selectedVaultFiles.length === 1
+        ? `Delete "${selectedVaultFiles[0].name}"? This will remove it from your vault.`
+        : `Delete ${selectedVaultFiles.length} selected files? This will remove them from your vault.`
+    );
+
+    if (!shouldDelete) return;
+
+    setIsDeletingFiles(true);
+
+    try {
+      for (const file of selectedVaultFiles) {
+        await deleteStoredFile(file);
+      }
+
+      setVaultSelectedFileIds(new Set());
+      showToast(
+        selectedVaultFiles.length === 1
+          ? "File deleted."
+          : `${selectedVaultFiles.length} files deleted.`
+      );
+    } catch (error) {
+      console.error("Delete selected files failed:", error);
+      showToast("Some files could not be deleted.", "info");
+    } finally {
+      setIsDeletingFiles(false);
+    }
+  };
+
   const filteredFiles = useMemo(() => {
     return files.filter((f) => {
       const matchesSearch = f.name
@@ -573,6 +650,10 @@ export default function Dashboard() {
       return matchesSearch && matchesFormat && matchesLoad;
     });
   }, [files, searchQuery, selectedFormats, selectedLoads]);
+
+  const selectedVaultFiles = useMemo(() => {
+    return files.filter((file) => vaultSelectedFileIds.has(file.id));
+  }, [files, vaultSelectedFileIds]);
 
   if (activeTab === "skim-sync" && skimSyncFiles.length > 0) {
     return (
@@ -864,8 +945,15 @@ export default function Dashboard() {
                     files={filteredFiles}
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
+                    selectedFileIds={vaultSelectedFileIds}
+                    onToggleFile={toggleVaultFileSelection}
+                    onSelectAllFiles={() => selectAllVisibleVaultFiles(filteredFiles)}
+                    onClearSelection={clearVaultSelection}
+                    onSkimSyncSelected={handleSkimSyncSelectedVaultFiles}
+                    onDeleteSelected={handleDeleteSelectedVaultFiles}
                     onStartSkimSync={handleStartSkimSync}
                     isCheckingLength={isCheckingLength}
+                    isDeletingFiles={isDeletingFiles}
                   />
                 )}
 
@@ -1356,6 +1444,9 @@ function SkimSyncView({
   const lastBoundaryAtRef = useRef<number>(0);
   const trackerIsActiveRef = useRef(false);
   const trackerIsPausedRef = useRef(false);
+  const utteranceBaseCharIndexRef = useRef(0);
+  const playbackStartWordIndexRef = useRef(0);
+  const ignoreNextSpeechEndRef = useRef(false);
 
   const displayTitle =
     files.length > 1
@@ -1377,6 +1468,9 @@ function SkimSyncView({
     lastBoundaryAtRef.current = 0;
     trackerIsActiveRef.current = false;
     trackerIsPausedRef.current = false;
+    utteranceBaseCharIndexRef.current = 0;
+    playbackStartWordIndexRef.current = 0;
+    ignoreNextSpeechEndRef.current = false;
     setCurrentCharIndex(0);
   };
 
@@ -1508,7 +1602,7 @@ function SkimSyncView({
         )
       : 0;
 
-  const startFallbackTimer = () => {
+  const startFallbackTimer = (startWordIndex = 0) => {
     stopFallbackTimer();
 
     if (!lyricWords.length || !aiScript) return;
@@ -1517,6 +1611,7 @@ function SkimSyncView({
     pausedAtRef.current = null;
     totalPausedTimeRef.current = 0;
     lastBoundaryAtRef.current = 0;
+    playbackStartWordIndexRef.current = startWordIndex;
     trackerIsActiveRef.current = true;
     trackerIsPausedRef.current = false;
 
@@ -1544,7 +1639,8 @@ function SkimSyncView({
 
       const estimatedWordIndex = Math.min(
         lyricWords.length - 1,
-        Math.floor(elapsedSeconds * estimatedWordsPerSecond)
+        playbackStartWordIndexRef.current +
+          Math.floor(elapsedSeconds * estimatedWordsPerSecond)
       );
 
       const estimatedWord = lyricWords[estimatedWordIndex];
@@ -1558,28 +1654,52 @@ function SkimSyncView({
   const handlePause = () => {
     if (!isPlaying) return;
 
-    pausedAtRef.current = Date.now();
+    const safePausedWordIndex = Math.min(
+      Math.max(currentWordIndex, 0),
+      Math.max(lyricWords.length - 1, 0)
+    );
+
+    const pausedWord = lyricWords[safePausedWordIndex];
+
+    trackerIsActiveRef.current = false;
     trackerIsPausedRef.current = true;
-    window.speechSynthesis.pause();
+    ignoreNextSpeechEndRef.current = true;
+    stopFallbackTimer();
+
+    if (pausedWord) {
+      setCurrentCharIndex(pausedWord.start);
+    }
+
+    window.speechSynthesis.cancel();
     setIsPlaying(false);
   };
 
-  const handleResume = () => {
-    if (pausedAtRef.current) {
-      totalPausedTimeRef.current += Date.now() - pausedAtRef.current;
-      pausedAtRef.current = null;
-    }
+  const handlePlayFromWord = (startWordIndex = 0) => {
+    if (!aiScript || !lyricWords.length) return;
 
-    trackerIsPausedRef.current = false;
-    window.speechSynthesis.resume();
-    setIsPlaying(true);
-  };
+    const safeStartWordIndex = Math.min(
+      Math.max(startWordIndex, 0),
+      lyricWords.length - 1
+    );
 
-  const handleFreshPlay = () => {
+    const startWord = lyricWords[safeStartWordIndex];
+    const baseCharIndex = startWord?.start ?? 0;
+    const remainingScript = aiScript.slice(baseCharIndex);
+
     window.speechSynthesis.cancel();
-    resetSpeechTracking();
 
-    const utterance = new SpeechSynthesisUtterance(aiScript);
+    stopFallbackTimer();
+
+    utteranceBaseCharIndexRef.current = baseCharIndex;
+    playbackStartWordIndexRef.current = safeStartWordIndex;
+    lastBoundaryAtRef.current = 0;
+    trackerIsActiveRef.current = true;
+    trackerIsPausedRef.current = false;
+    ignoreNextSpeechEndRef.current = false;
+
+    setCurrentCharIndex(baseCharIndex);
+
+    const utterance = new SpeechSynthesisUtterance(remainingScript);
 
     utterance.rate = 1;
     utterance.pitch = 1;
@@ -1593,30 +1713,16 @@ function SkimSyncView({
     utterance.onboundary = (event) => {
       if (typeof event.charIndex === "number" && event.charIndex >= 0) {
         lastBoundaryAtRef.current = Date.now();
-        setCurrentCharIndex(event.charIndex);
+        setCurrentCharIndex(utteranceBaseCharIndexRef.current + event.charIndex);
       }
-    };
-
-    utterance.onpause = () => {
-      if (!pausedAtRef.current) {
-        pausedAtRef.current = Date.now();
-      }
-
-      trackerIsPausedRef.current = true;
-      setIsPlaying(false);
-    };
-
-    utterance.onresume = () => {
-      if (pausedAtRef.current) {
-        totalPausedTimeRef.current += Date.now() - pausedAtRef.current;
-        pausedAtRef.current = null;
-      }
-
-      trackerIsPausedRef.current = false;
-      setIsPlaying(true);
     };
 
     utterance.onend = () => {
+      if (ignoreNextSpeechEndRef.current) {
+        ignoreNextSpeechEndRef.current = false;
+        return;
+      }
+
       trackerIsActiveRef.current = false;
       trackerIsPausedRef.current = false;
       stopFallbackTimer();
@@ -1625,6 +1731,11 @@ function SkimSyncView({
     };
 
     utterance.onerror = (event) => {
+      if (ignoreNextSpeechEndRef.current) {
+        ignoreNextSpeechEndRef.current = false;
+        return;
+      }
+
       console.error("Speech synthesis error:", event);
       trackerIsActiveRef.current = false;
       trackerIsPausedRef.current = false;
@@ -1633,7 +1744,7 @@ function SkimSyncView({
     };
 
     utteranceRef.current = utterance;
-    startFallbackTimer();
+    startFallbackTimer(safeStartWordIndex);
     setIsPlaying(true);
     window.speechSynthesis.speak(utterance);
   };
@@ -1646,12 +1757,10 @@ function SkimSyncView({
       return;
     }
 
-    if (window.speechSynthesis.paused) {
-      handleResume();
-      return;
-    }
+    const hasReachedEnd = currentCharIndex >= aiScript.length - 1;
+    const resumeFromWordIndex = hasReachedEnd ? 0 : currentWordIndex;
 
-    handleFreshPlay();
+    handlePlayFromWord(resumeFromWordIndex);
   };
 
   return (
@@ -2300,12 +2409,37 @@ function FilesView({
   files,
   searchQuery,
   setSearchQuery,
+  selectedFileIds,
+  onToggleFile,
+  onSelectAllFiles,
+  onClearSelection,
+  onSkimSyncSelected,
+  onDeleteSelected,
   onStartSkimSync,
   isCheckingLength,
-}: any) {
+  isDeletingFiles,
+}: {
+  files: StudyFile[];
+  searchQuery: string;
+  setSearchQuery: (value: string) => void;
+  selectedFileIds: Set<string>;
+  onToggleFile: (fileId: string) => void;
+  onSelectAllFiles: () => void;
+  onClearSelection: () => void;
+  onSkimSyncSelected: () => void;
+  onDeleteSelected: () => void;
+  onStartSkimSync: (file: StudyFile) => void;
+  isCheckingLength: boolean;
+  isDeletingFiles: boolean;
+}) {
+  const selectedCount = selectedFileIds.size;
+  const hasFiles = files.length > 0;
+  const allVisibleSelected =
+    hasFiles && files.every((file) => selectedFileIds.has(file.id));
+
   return (
     <div className="mx-auto w-full max-w-[1200px]">
-      <header className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+      <header className="mb-4 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="mb-1 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
             Vault
@@ -2329,6 +2463,51 @@ function FilesView({
         </div>
       </header>
 
+      <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900">
+              {selectedCount > 0
+                ? `${selectedCount} file${selectedCount > 1 ? "s" : ""} selected`
+                : "Select files to combine"}
+            </p>
+
+            <p className="mt-1 text-xs leading-relaxed text-gray-500">
+              Choose multiple files, then Skim-Sync them into one combined
+              summary.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button
+              onClick={allVisibleSelected ? onClearSelection : onSelectAllFiles}
+              disabled={!hasFiles || isCheckingLength || isDeletingFiles}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-[#5A22C3] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {allVisibleSelected ? "Clear Selection" : "Select Visible"}
+            </button>
+
+            <button
+              onClick={onDeleteSelected}
+              disabled={selectedCount === 0 || isDeletingFiles || isCheckingLength}
+              className="flex items-center justify-center gap-2 rounded-lg border border-red-100 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Trash2 size={15} />
+              {isDeletingFiles ? "Deleting..." : "Delete Selected"}
+            </button>
+
+            <button
+              onClick={onSkimSyncSelected}
+              disabled={selectedCount === 0 || isCheckingLength || isDeletingFiles}
+              className="flex items-center justify-center gap-2 rounded-lg bg-[#5A22C3] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#4a1ca3] disabled:cursor-not-allowed disabled:bg-gray-300"
+            >
+              <Sparkles size={15} />
+              {isCheckingLength ? "Checking..." : "Skim-Sync Selected"}
+            </button>
+          </div>
+        </div>
+      </div>
+
       {files.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center">
           <p className="text-sm font-medium text-gray-700">No files found.</p>
@@ -2338,44 +2517,83 @@ function FilesView({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {files.map((file: StudyFile) => (
-            <div
-              key={file.id}
-              className="flex flex-col rounded-2xl border border-gray-200 bg-white p-5 transition-colors hover:border-[#5A22C3]/50"
-            >
-              <div className="mb-4 flex items-start justify-between">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#F3E8FF] bg-[#F3E8FF]/50 text-[#5A22C3]">
-                  {isImageFile(file) ? (
-                    <ImageIcon size={18} />
-                  ) : (
-                    <FileText size={18} />
-                  )}
+          {files.map((file: StudyFile) => {
+            const isSelected = selectedFileIds.has(file.id);
+
+            return (
+              <div
+                key={file.id}
+                className={`flex flex-col rounded-2xl border bg-white p-5 transition-colors ${
+                  isSelected
+                    ? "border-[#5A22C3] bg-[#F3E8FF]/30"
+                    : "border-gray-200 hover:border-[#5A22C3]/50"
+                }`}
+              >
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => onToggleFile(file.id)}
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                        isSelected
+                          ? "border-[#5A22C3] bg-[#5A22C3] text-white"
+                          : "border-gray-300 bg-white text-transparent hover:border-[#5A22C3]"
+                      }`}
+                      aria-label={
+                        isSelected ? `Deselect ${file.name}` : `Select ${file.name}`
+                      }
+                    >
+                      <CheckCircle2 size={15} />
+                    </button>
+
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#F3E8FF] bg-[#F3E8FF]/50 text-[#5A22C3]">
+                      {isImageFile(file) ? (
+                        <ImageIcon size={18} />
+                      ) : (
+                        <FileText size={18} />
+                      )}
+                    </div>
+                  </div>
+
+                  <span className="rounded bg-gray-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+                    {file.format}
+                  </span>
                 </div>
 
-                <span className="rounded bg-gray-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-600">
-                  {file.format}
-                </span>
+                <h3 className="mb-1 line-clamp-2 text-[15px] font-medium leading-tight text-gray-900">
+                  {file.name}
+                </h3>
+
+                <div className="mb-6 mt-auto flex items-center gap-1.5 text-[12px] text-gray-500">
+                  <Clock size={12} />
+                  {file.date} • {file.size}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => onToggleFile(file.id)}
+                    disabled={isCheckingLength || isDeletingFiles}
+                    className={`flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${
+                      isSelected
+                        ? "border-[#5A22C3] bg-[#F3E8FF] text-[#5A22C3]"
+                        : "border-gray-200 bg-white text-gray-800 hover:border-[#F3E8FF] hover:bg-[#F3E8FF] hover:text-[#5A22C3]"
+                    }`}
+                  >
+                    {isSelected ? "Selected" : "Select"}
+                  </button>
+
+                  <button
+                    onClick={() => onStartSkimSync(file)}
+                    disabled={isCheckingLength || isDeletingFiles}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-900 transition-colors hover:border-[#F3E8FF] hover:bg-[#F3E8FF] hover:text-[#5A22C3] disabled:opacity-50"
+                  >
+                    <Sparkles size={14} />
+                    {isCheckingLength ? "Checking..." : "Skim"}
+                  </button>
+                </div>
               </div>
-
-              <h3 className="mb-1 line-clamp-2 text-[15px] font-medium leading-tight text-gray-900">
-                {file.name}
-              </h3>
-
-              <div className="mb-6 mt-auto flex items-center gap-1.5 text-[12px] text-gray-500">
-                <Clock size={12} />
-                {file.date} • {file.size}
-              </div>
-
-              <button
-                onClick={() => onStartSkimSync(file)}
-                disabled={isCheckingLength}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-900 transition-colors hover:border-[#F3E8FF] hover:bg-[#F3E8FF] hover:text-[#5A22C3] disabled:opacity-50"
-              >
-                <Sparkles size={14} />
-                {isCheckingLength ? "Checking..." : "Skim-Sync"}
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
