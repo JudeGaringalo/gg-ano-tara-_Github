@@ -22,7 +22,7 @@ const IMAGE_FORMATS = ["jpg", "jpeg", "png", "webp"];
 
 // Use the text model for quiz generation.
 // Keep the vision model only when a selected quiz file is an image.
-const GROQ_TEXT_MODEL = "llama-3.1-8b-instant";
+const GROQ_TEXT_MODEL = "openai/gpt-oss-20b";
 const GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 
 type QuizSourceFile = {

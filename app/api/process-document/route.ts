@@ -23,7 +23,7 @@ const LONG_DOCUMENT_WORD_LIMIT = 500;
 
 // Use the cheaper/faster text model for extracted document text.
 // Keep the vision model only for camera/image uploads because llama-3.1-8b-instant cannot read images.
-const GROQ_TEXT_MODEL = "llama-3.1-8b-instant";
+const GROQ_TEXT_MODEL = "openai/gpt-oss-20b";
 const GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 
 type ImageMode =
