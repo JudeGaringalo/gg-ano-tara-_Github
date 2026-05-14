@@ -43,25 +43,16 @@ const ProfileDashboard = () => {
 
         setUser(session.user);
 
+        // Extracting data strictly from Google OAuth metadata
         const authMetadata = session.user.user_metadata ?? {};
         const email = session.user.email ?? '';
         const fallbackName = email ? email.split('@')[0] : 'User';
 
-        // Fetch custom data from public 'profile' table
-        const { data: profileData, error: profileError } = await supabase
-          .from('profile')
-          .select('nickname, username')
-          .eq('id', session.user.id)
-          .maybeSingle();
-
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.error("Error fetching profile:", profileError);
-        }
-
         setProfileForm({
           fullName: authMetadata.full_name ?? authMetadata.name ?? fallbackName,
-          nickname: profileData?.nickname ?? authMetadata.nickname ?? fallbackName,
-          username: profileData?.username ?? authMetadata.username ?? fallbackName,
+          // Google sometimes provides given_name which acts nicely as a nickname
+          nickname: authMetadata.given_name ?? authMetadata.nickname ?? fallbackName, 
+          username: authMetadata.preferred_username ?? fallbackName,
           gender: authMetadata.gender ?? 'Other',
           email: email,
         });
@@ -142,7 +133,12 @@ const ProfileDashboard = () => {
             <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8 z-10 text-center md:text-left w-full">
               <motion.div whileHover={{ rotate: 5, scale: 1.05 }} className="w-24 h-24 md:w-28 md:h-28 bg-[#D9D9D9] rounded-full border-4 border-white/20 shadow-lg overflow-hidden flex items-center justify-center shrink-0">
                 {user?.user_metadata?.avatar_url || user?.user_metadata?.picture ? (
-                  <img src={user.user_metadata.avatar_url || user.user_metadata.picture} alt={profileForm.fullName} className="h-full w-full object-cover" />
+                  <img 
+                    src={user.user_metadata.avatar_url || user.user_metadata.picture} 
+                    alt={profileForm.fullName} 
+                    className="h-full w-full object-cover" 
+                    referrerPolicy="no-referrer" 
+                  />
                 ) : (
                   <span className="text-3xl md:text-4xl font-black text-[#631DC3]">
                     {(profileForm.nickname || profileForm.fullName || profileForm.email || 'U').charAt(0).toUpperCase()}
@@ -191,7 +187,6 @@ const ProfileDashboard = () => {
 
 /* --- HELPER COMPONENTS --- */
 
-// Simplified to be strictly read-only
 const InputBlock = ({ label, value }: any) => (
   <div className="space-y-3 text-left">
     <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">{label}</label>
@@ -199,7 +194,7 @@ const InputBlock = ({ label, value }: any) => (
       value={value} 
       readOnly
       disabled
-      className="w-full border border-gray-100 rounded-xl px-5 py-4 text-sm font-medium outline-none transition-all bg-[#F9FAFB] opacity-80 cursor-not-allowed" 
+      className="w-full border border-gray-100 rounded-xl px-5 py-4 text-sm font-medium outline-none transition-all bg-[#F9FAFB] opacity-80 cursor-not-allowed text-slate-600" 
     />
   </div>
 );
