@@ -19,6 +19,7 @@ const groq = new Groq({
 
 const DOCUMENT_FORMATS = ["pdf", "docx", "xlsx", "xls", "txt"];
 const IMAGE_FORMATS = ["jpg", "jpeg", "png", "webp"];
+const LONG_DOCUMENT_WORD_LIMIT = 500;
 
 type ImageMode =
   | "text_image"
@@ -41,6 +42,11 @@ function isImageFormat(format: string) {
 
 function isDocumentFormat(format: string) {
   return DOCUMENT_FORMATS.includes(format) || format.includes("pdf");
+}
+
+function countWords(text: string) {
+  const words = text.trim().match(/\b[\w'’-]+\b/g);
+  return words ? words.length : 0;
 }
 
 function cleanJsonResponse(rawResponse: string) {
@@ -81,7 +87,12 @@ function parseImageAnalysis(rawResponse: string): ImageAnalysisResult {
 
 export async function POST(req: Request) {
   try {
-    const { filePath, fileType } = await req.json();
+    const {
+      filePath,
+      fileType,
+      checkOnly = false,
+      skipLongDocumentCheck = false,
+    } = await req.json();
 
     if (!filePath || !fileType) {
       return NextResponse.json(
@@ -104,14 +115,19 @@ export async function POST(req: Request) {
     /**
      * IMAGE PROCESSING
      *
-     * This handles camera captures, screenshots, photos, diagrams,
-     * non-text images, mixed images, and text-heavy images.
-     *
-     * Important:
-     * It does NOT fail just because the image has no readable text.
-     * If no text is visible, the AI summarizes the visual content instead.
+     * Images do not use the 500-word document warning.
+     * They are processed visually, whether they contain text or not.
      */
     if (isImageFormat(format)) {
+      if (checkOnly) {
+        return NextResponse.json({
+          requiresConfirmation: false,
+          wordCount: null,
+          limit: LONG_DOCUMENT_WORD_LIMIT,
+          fileType: "image",
+        });
+      }
+
       console.log("Creating signed image URL...");
 
       const { data: signedUrlData, error: signedUrlError } =
@@ -214,8 +230,6 @@ Keep the script under 3 minutes of speaking time.
 
     /**
      * DOCUMENT PROCESSING
-     *
-     * This handles PDF, DOCX, XLSX, XLS, and TXT files.
      */
     console.log("Downloading document...");
 
@@ -278,6 +292,28 @@ Keep the script under 3 minutes of speaking time.
       );
     }
 
+    const wordCount = countWords(extractedText);
+    const isLongDocument = wordCount > LONG_DOCUMENT_WORD_LIMIT;
+
+    if (checkOnly) {
+      return NextResponse.json({
+        requiresConfirmation: isLongDocument,
+        wordCount,
+        limit: LONG_DOCUMENT_WORD_LIMIT,
+        fileType: "document",
+      });
+    }
+
+    if (isLongDocument && !skipLongDocumentCheck) {
+      return NextResponse.json({
+        requiresConfirmation: true,
+        wordCount,
+        limit: LONG_DOCUMENT_WORD_LIMIT,
+        message:
+          "This document is quite long. It may feel overwhelming to review all at once. Do you still want to continue?",
+      });
+    }
+
     const truncatedText = extractedText.substring(0, 15000);
 
     console.log("Sending document text to GROQ...");
@@ -299,6 +335,9 @@ Keep the script under 3 minutes of speaking time.
     });
 
     return NextResponse.json({
+      requiresConfirmation: false,
+      wordCount,
+      limit: LONG_DOCUMENT_WORD_LIMIT,
       script:
         chatCompletion.choices[0]?.message?.content ||
         "No summary generated.",

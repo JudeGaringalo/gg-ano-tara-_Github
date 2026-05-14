@@ -27,6 +27,7 @@ import {
   Image as ImageIcon,
   FolderOpen,
   RefreshCcw,
+  AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ReactLenis, useLenis } from "@studio-freight/react-lenis";
@@ -43,6 +44,15 @@ interface StudyFile {
   duration: string;
   filePath?: string;
 }
+
+type LongDocumentWarning = {
+  files: StudyFile[];
+  totalWordCount: number;
+  longFiles: {
+    name: string;
+    wordCount: number;
+  }[];
+};
 
 const BRAND_PURPLE = "#5A22C3";
 
@@ -99,10 +109,12 @@ export default function Dashboard() {
   const [session, setSession] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isCheckingLength, setIsCheckingLength] = useState(false);
 
   const [activeTab, setActiveTab] = useState<TabType>("home");
   const [files, setFiles] = useState<StudyFile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "info";
@@ -122,6 +134,8 @@ export default function Dashboard() {
   const [recentlyUploaded, setRecentlyUploaded] = useState<StudyFile[]>([]);
 
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [longDocumentWarning, setLongDocumentWarning] =
+    useState<LongDocumentWarning | null>(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -285,18 +299,94 @@ export default function Dashboard() {
     setIsCameraOpen(false);
   };
 
+  const startSkimSyncNow = (targetFiles: StudyFile[]) => {
+    setSkimSyncFiles(targetFiles);
+    setActiveTab("skim-sync");
+    setRecentlyUploaded([]);
+  };
+
+  const handleStartSkimSync = async (fileOrFiles: StudyFile | StudyFile[]) => {
+    const targetFiles = Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles];
+
+    setIsCheckingLength(true);
+
+    try {
+      let totalWordCount = 0;
+
+      const longFiles: {
+        name: string;
+        wordCount: number;
+      }[] = [];
+
+      for (const file of targetFiles) {
+        if (!file.filePath) continue;
+        if (isImageFile(file)) continue;
+
+        const res = await fetch("/api/process-document", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            filePath: file.filePath,
+            fileType: file.format,
+            checkOnly: true,
+          }),
+        });
+
+        if (!res.ok) {
+          console.error("Could not check document length:", file.name);
+          continue;
+        }
+
+        const data = await res.json();
+
+        if (typeof data.wordCount === "number") {
+          totalWordCount += data.wordCount;
+
+          if (data.wordCount > 500) {
+            longFiles.push({
+              name: file.name,
+              wordCount: data.wordCount,
+            });
+          }
+        }
+      }
+
+      if (totalWordCount > 500 || longFiles.length > 0) {
+        setLongDocumentWarning({
+          files: targetFiles,
+          totalWordCount,
+          longFiles,
+        });
+
+        return;
+      }
+
+      startSkimSyncNow(targetFiles);
+    } catch (error) {
+      console.error("Length check failed:", error);
+      startSkimSyncNow(targetFiles);
+    } finally {
+      setIsCheckingLength(false);
+    }
+  };
+
+  const handleConfirmLongDocument = () => {
+    if (!longDocumentWarning) return;
+
+    startSkimSyncNow(longDocumentWarning.files);
+    setLongDocumentWarning(null);
+  };
+
+  const handleCancelLongDocument = () => {
+    setLongDocumentWarning(null);
+  };
+
   const handleLogout = async () => {
     setIsProfileOpen(false);
     await supabase.auth.signOut();
     router.push("/login");
-  };
-
-  const handleStartSkimSync = (fileOrFiles: StudyFile | StudyFile[]) => {
-    const targetFiles = Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles];
-
-    setSkimSyncFiles(targetFiles);
-    setActiveTab("skim-sync");
-    setRecentlyUploaded([]);
   };
 
   const filteredFiles = useMemo(() => {
@@ -324,13 +414,13 @@ export default function Dashboard() {
         `}</style>
 
         <div className="min-h-screen bg-white font-sans text-gray-900 relative overflow-hidden">
-          <nav className="sticky top-0 z-40 flex items-center justify-between px-6 md:px-12 py-5 bg-white border-b border-gray-100 shrink-0">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center w-20 md:w-24 h-auto">
+          <nav className="sticky top-0 z-40 flex items-center justify-between gap-4 border-b border-gray-100 bg-white px-4 py-4 sm:px-6 md:px-12 md:py-5">
+            <div className="flex min-w-0 items-center gap-4 sm:gap-6">
+              <div className="flex w-20 shrink-0 items-center md:w-24">
                 <img
                   src="/images/logo.png"
                   alt="Echo Logo"
-                  className="w-full h-auto object-contain"
+                  className="h-auto w-full object-contain"
                   style={{
                     filter:
                       "invert(18%) sepia(88%) saturate(4535%) hue-rotate(262deg) brightness(82%) contrast(92%)",
@@ -338,26 +428,26 @@ export default function Dashboard() {
                 />
               </div>
 
-              <div className="h-4 w-[1px] bg-gray-200" />
+              <div className="hidden h-4 w-px bg-gray-200 sm:block" />
 
               <button
                 onClick={() => setActiveTab("home")}
-                className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-2"
+                className="flex items-center gap-2 truncate text-sm font-medium text-gray-500 transition-colors hover:text-gray-900"
               >
                 <Home size={16} />
-                Dashboard
+                <span className="hidden sm:inline">Dashboard</span>
               </button>
             </div>
 
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-red-500 transition-colors"
+              className="flex shrink-0 items-center gap-2 text-sm font-medium text-gray-400 transition-colors hover:text-red-500"
             >
               <LogOut size={16} />
             </button>
           </nav>
 
-          <main className="p-4 sm:p-6 md:p-8 lg:p-12 relative">
+          <main className="relative px-4 py-6 sm:px-6 md:p-8 lg:p-12">
             <SkimSyncView
               files={skimSyncFiles}
               onBack={() => setActiveTab("home")}
@@ -375,7 +465,7 @@ export default function Dashboard() {
         * { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      <div className="min-h-screen bg-gray-50 font-sans text-gray-900 flex flex-col relative selection:bg-gray-200">
+      <div className="relative flex min-h-screen flex-col bg-gray-50 font-sans text-gray-900 selection:bg-gray-200">
         <input
           type="file"
           ref={fileInputRef}
@@ -395,22 +485,33 @@ export default function Dashboard() {
         </AnimatePresence>
 
         <AnimatePresence>
+          {longDocumentWarning && (
+            <LongDocumentWarningModal
+              totalWordCount={longDocumentWarning.totalWordCount}
+              longFiles={longDocumentWarning.longFiles}
+              onCancel={handleCancelLongDocument}
+              onProceed={handleConfirmLongDocument}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
           {toast && (
             <motion.div
               initial={{ opacity: 0, y: 50, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed bottom-8 right-8 z-50 flex items-center gap-3 bg-[#5A22C3] text-white px-6 py-4 rounded-lg shadow-sm"
+              className="fixed bottom-5 left-4 right-4 z-50 flex items-center gap-3 rounded-xl bg-[#5A22C3] px-4 py-4 text-white shadow-lg sm:bottom-8 sm:left-auto sm:right-8 sm:max-w-md sm:px-6"
             >
-              <CheckCircle2 size={18} className="text-[#F3E8FF]" />
+              <CheckCircle2 size={18} className="shrink-0 text-[#F3E8FF]" />
 
-              <span className="font-medium text-sm tracking-tight">
+              <span className="min-w-0 flex-1 text-sm font-medium tracking-tight">
                 {toast.message}
               </span>
 
               <button
                 onClick={() => setToast(null)}
-                className="ml-4 text-white/70 hover:text-white transition-colors"
+                className="shrink-0 text-white/70 transition-colors hover:text-white"
               >
                 <X size={16} />
               </button>
@@ -421,17 +522,17 @@ export default function Dashboard() {
         <AnimatePresence>
           {recentlyUploaded.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-2xl bg-white border border-gray-200 shadow-sm rounded-xl p-6"
+              initial={{ opacity: 0, y: -20, x: "-50%" }}
+              animate={{ opacity: 1, y: 0, x: "-50%" }}
+              exit={{ opacity: 0, y: -20, x: "-50%" }}
+              className="fixed left-1/2 top-20 z-50 w-[calc(100%-2rem)] max-w-2xl rounded-2xl border border-gray-200 bg-white p-5 shadow-xl sm:top-24 sm:p-6"
             >
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Sparkles className="text-[#5A22C3]" size={18} />
+              <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                <div className="min-w-0">
+                  <div className="mb-1 flex items-center gap-2">
+                    <Sparkles className="shrink-0 text-[#5A22C3]" size={18} />
 
-                    <h3 className="font-semibold tracking-tight text-lg text-gray-900">
+                    <h3 className="truncate text-base font-semibold tracking-tight text-gray-900 sm:text-lg">
                       What should we do with{" "}
                       {recentlyUploaded.length > 1
                         ? "these files"
@@ -440,26 +541,29 @@ export default function Dashboard() {
                     </h3>
                   </div>
 
-                  <p className="text-sm text-gray-500">
+                  <p className="line-clamp-2 text-sm text-gray-500">
                     {recentlyUploaded.length > 1
                       ? `You just uploaded ${recentlyUploaded.length} files.`
                       : `You just uploaded ${recentlyUploaded[0].name}.`}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="flex w-full flex-col gap-3 sm:flex-row md:w-auto">
                   <button
                     onClick={() => setRecentlyUploaded([])}
-                    className="px-5 py-2.5 rounded-lg text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                    className="rounded-lg bg-gray-100 px-5 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200"
                   >
                     Dismiss
                   </button>
 
                   <button
                     onClick={() => handleStartSkimSync(recentlyUploaded)}
-                    className="flex-1 md:flex-none px-6 py-2.5 rounded-lg text-sm font-medium text-white bg-[#5A22C3] hover:bg-[#4a1ca3] transition-all shadow-md"
+                    disabled={isCheckingLength}
+                    className="rounded-lg bg-[#5A22C3] px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:bg-[#4a1ca3] disabled:bg-gray-300"
                   >
-                    {recentlyUploaded.length > 1
+                    {isCheckingLength
+                      ? "Checking..."
+                      : recentlyUploaded.length > 1
                       ? "Combine & Skim-Sync"
                       : "Start Skim-Sync"}
                   </button>
@@ -469,12 +573,12 @@ export default function Dashboard() {
           )}
         </AnimatePresence>
 
-        <nav className="sticky top-0 z-40 flex items-center justify-between px-6 md:px-10 py-4 bg-white border-b border-gray-200 shrink-0">
-          <div className="flex items-center w-20 md:w-24 h-auto">
+        <nav className="sticky top-0 z-40 flex shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 py-4 sm:px-6 md:px-10">
+          <div className="flex w-20 items-center md:w-24">
             <img
               src="/images/logo.png"
               alt="Echo Logo"
-              className="w-full h-auto object-contain"
+              className="h-auto w-full object-contain"
               style={{
                 filter:
                   "invert(18%) sepia(88%) saturate(4535%) hue-rotate(262deg) brightness(82%) contrast(92%)",
@@ -485,7 +589,7 @@ export default function Dashboard() {
           <div className="relative">
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-600 font-medium text-sm border border-gray-300 hover:border-[#5A22C3] hover:text-[#5A22C3] hover:bg-gray-50 transition-all cursor-pointer bg-white"
+              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-gray-300 bg-white text-sm font-medium text-gray-600 transition-all hover:border-[#5A22C3] hover:bg-gray-50 hover:text-[#5A22C3]"
             >
               {userProfile?.nickname?.charAt(0)?.toUpperCase() || "U"}
             </button>
@@ -502,14 +606,14 @@ export default function Dashboard() {
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-3 w-56 bg-white border border-gray-200 rounded-lg shadow-sm py-2 z-20 overflow-hidden"
+                    className="absolute right-0 z-20 mt-3 w-56 overflow-hidden rounded-lg border border-gray-200 bg-white py-2 shadow-lg"
                   >
-                    <div className="px-4 py-3 border-b border-gray-100 mb-1 bg-gray-50/50">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider">
+                    <div className="mb-1 border-b border-gray-100 bg-gray-50/50 px-4 py-3">
+                      <p className="text-xs uppercase tracking-wider text-gray-500">
                         Account
                       </p>
 
-                      <p className="text-sm font-medium text-gray-900 mt-1 truncate">
+                      <p className="mt-1 truncate text-sm font-medium text-gray-900">
                         {userProfile?.nickname ||
                           session?.user?.email ||
                           "User"}
@@ -518,7 +622,7 @@ export default function Dashboard() {
 
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-gray-50 transition-colors"
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 transition-colors hover:bg-gray-50"
                     >
                       <LogOut size={16} />
                       Logout
@@ -530,9 +634,9 @@ export default function Dashboard() {
           </div>
         </nav>
 
-        <div className="flex flex-col md:flex-row flex-1 min-h-0">
-          <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-gray-200 flex flex-col p-4 md:p-6 shrink-0 overflow-hidden z-30">
-            <nav className="flex flex-col gap-1">
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+          <aside className="z-30 flex w-full shrink-0 flex-col overflow-x-auto border-b border-gray-200 bg-white p-3 md:w-64 md:overflow-hidden md:border-b-0 md:border-r md:p-6">
+            <nav className="flex min-w-max gap-1 md:min-w-0 md:flex-col">
               <SidebarItem
                 icon={<Home size={16} />}
                 label="Home"
@@ -557,7 +661,7 @@ export default function Dashboard() {
           </aside>
 
           <main
-            className="flex-1 min-h-0 p-4 sm:p-6 md:p-8 lg:p-12 relative"
+            className="relative min-h-0 flex-1 p-4 sm:p-6 md:p-8 lg:p-12"
             ref={scrollContainerRef}
           >
             <AnimatePresence mode="wait">
@@ -572,6 +676,7 @@ export default function Dashboard() {
                   <HomeView
                     files={files}
                     isUploading={isUploading}
+                    isCheckingLength={isCheckingLength}
                     onBrowse={() => fileInputRef.current?.click()}
                     onCapture={() => setIsCameraOpen(true)}
                     onStartSkimSync={handleStartSkimSync}
@@ -590,6 +695,7 @@ export default function Dashboard() {
                     showFilters={showFilters}
                     setShowFilters={setShowFilters}
                     onStartSkimSync={handleStartSkimSync}
+                    isCheckingLength={isCheckingLength}
                   />
                 )}
 
@@ -755,8 +861,14 @@ function CameraCaptureModal({
             return;
           }
 
-          await onCapture(blob);
-          setIsCapturing(false);
+          try {
+            await onCapture(blob);
+          } catch (error) {
+            console.error("Capture upload error:", error);
+            setCameraError("The image was captured but could not be uploaded.");
+          } finally {
+            setIsCapturing(false);
+          }
         },
         "image/jpeg",
         0.92
@@ -778,47 +890,46 @@ function CameraCaptureModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm sm:p-4"
     >
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.96 }}
-        className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl border border-white/20"
+        className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/20 bg-white shadow-2xl"
       >
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-4 py-4 sm:px-5">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">
               Capture study material
             </h2>
 
-            <p className="text-sm text-gray-500">
+            <p className="mt-0.5 text-xs leading-relaxed text-gray-500 sm:text-sm">
               Take a photo of notes, slides, books, or whiteboard content.
             </p>
           </div>
 
           <button
             onClick={handleClose}
-            className="h-9 w-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+            disabled={isCapturing}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 disabled:opacity-50"
           >
             <X size={18} />
           </button>
         </div>
 
-        <div className="bg-gray-950 relative aspect-[4/3] sm:aspect-video">
+        <div className="relative min-h-[280px] flex-1 bg-gray-950 sm:min-h-[360px]">
           {cameraError ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-              <Camera size={42} className="text-white/40 mb-4" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+              <Camera size={42} className="mb-4 text-white/40" />
 
-              <p className="text-white font-medium mb-2">
-                Camera unavailable
-              </p>
+              <p className="mb-2 font-medium text-white">Camera unavailable</p>
 
-              <p className="text-white/60 text-sm max-w-md">{cameraError}</p>
+              <p className="max-w-md text-sm text-white/60">{cameraError}</p>
 
               <button
                 onClick={() => startCamera(facingMode)}
-                className="mt-6 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100 transition-colors"
+                className="mt-6 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-100"
               >
                 Try Again
               </button>
@@ -830,7 +941,7 @@ function CameraCaptureModal({
                 autoPlay
                 playsInline
                 muted
-                className="h-full w-full object-cover"
+                className="h-full max-h-[58vh] min-h-[280px] w-full object-cover sm:min-h-[360px]"
               />
 
               {!isCameraReady && (
@@ -856,21 +967,21 @@ function CameraCaptureModal({
           <canvas ref={canvasRef} className="hidden" />
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 bg-white">
+        <div className="flex shrink-0 flex-col gap-3 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <button
             onClick={handleSwitchCamera}
             disabled={isCapturing}
-            className="w-full sm:w-auto rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#5A22C3] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-[#5A22C3] disabled:opacity-50 sm:w-auto"
           >
             <RefreshCcw size={16} />
             Switch Camera
           </button>
 
-          <div className="flex w-full sm:w-auto items-center gap-3">
+          <div className="flex w-full items-center gap-3 sm:w-auto">
             <button
               onClick={handleClose}
               disabled={isCapturing}
-              className="flex-1 sm:flex-none rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50"
+              className="flex-1 rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-50 sm:flex-none"
             >
               Cancel
             </button>
@@ -878,12 +989,112 @@ function CameraCaptureModal({
             <button
               onClick={handleCapture}
               disabled={!isCameraReady || isCapturing || !!cameraError}
-              className="flex-1 sm:flex-none rounded-lg bg-[#5A22C3] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#4a1ca3] transition-colors disabled:bg-gray-300 flex items-center justify-center gap-2"
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#5A22C3] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#4a1ca3] disabled:bg-gray-300 sm:flex-none"
             >
               <Camera size={16} />
               {isCapturing ? "Capturing..." : "Capture Image"}
             </button>
           </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function LongDocumentWarningModal({
+  totalWordCount,
+  longFiles,
+  onCancel,
+  onProceed,
+}: {
+  totalWordCount: number;
+  longFiles: {
+    name: string;
+    wordCount: number;
+  }[];
+  onCancel: () => void;
+  onProceed: () => void;
+}) {
+  const hasMultipleLongFiles = longFiles.length > 1;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 px-4 py-6 backdrop-blur-sm"
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 18, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 18, scale: 0.96 }}
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl sm:p-6"
+      >
+        <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-[#F3E8FF] text-[#5A22C3]">
+          <AlertTriangle size={22} />
+        </div>
+
+        <h2 className="mb-2 text-xl font-semibold tracking-tight text-gray-900">
+          {hasMultipleLongFiles
+            ? "These documents are quite long"
+            : "This document is quite long"}
+        </h2>
+
+        <p className="text-sm leading-relaxed text-gray-500">
+          {hasMultipleLongFiles
+            ? "These documents may feel overwhelming to review all at once. Do you still want to continue?"
+            : "This document may feel overwhelming to review all at once. Do you still want to continue?"}
+        </p>
+
+        {totalWordCount > 0 && (
+          <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+              Estimated length
+            </p>
+
+            <p className="mt-1 text-2xl font-bold text-gray-900">
+              {totalWordCount.toLocaleString()} words
+            </p>
+
+            <p className="mt-1 text-xs text-gray-500">
+              Echo recommends extra confirmation for documents over 500 words.
+            </p>
+          </div>
+        )}
+
+        {longFiles.length > 0 && (
+          <div className="mt-4 max-h-36 overflow-y-auto rounded-xl border border-gray-100">
+            {longFiles.map((file) => (
+              <div
+                key={file.name}
+                className="flex items-center justify-between gap-3 border-b border-gray-100 px-3 py-2 last:border-b-0"
+              >
+                <span className="truncate text-xs font-medium text-gray-700">
+                  {file.name}
+                </span>
+
+                <span className="shrink-0 text-xs text-gray-400">
+                  {file.wordCount.toLocaleString()} words
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            onClick={onCancel}
+            className="rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
+          >
+            Cancel
+          </button>
+
+          <button
+            onClick={onProceed}
+            className="rounded-lg bg-[#5A22C3] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#4a1ca3]"
+          >
+            Continue Anyway
+          </button>
         </div>
       </motion.div>
     </motion.div>
@@ -903,6 +1114,8 @@ function SkimSyncView({
   const [isLoading, setIsLoading] = useState(true);
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const lyricsScrollRef = useRef<HTMLDivElement | null>(null);
+  const activeLineRef = useRef<HTMLDivElement | null>(null);
 
   const displayTitle =
     files.length > 1
@@ -913,6 +1126,8 @@ function SkimSyncView({
     const fetchScript = async () => {
       try {
         setIsLoading(true);
+        setCurrentCharIndex(0);
+        window.speechSynthesis.cancel();
 
         let combinedScript = "";
 
@@ -927,6 +1142,7 @@ function SkimSyncView({
             body: JSON.stringify({
               filePath: file.filePath,
               fileType: file.format,
+              skipLongDocumentCheck: true,
             }),
           });
 
@@ -993,7 +1209,7 @@ function SkimSyncView({
   }, [lyricWords, currentCharIndex]);
 
   const lyricLines = useMemo(() => {
-    const lines: typeof lyricWords[] = [];
+    const lines: Array<typeof lyricWords> = [];
 
     for (let i = 0; i < lyricWords.length; i += 4) {
       lines.push(lyricWords.slice(i, i + 4));
@@ -1004,6 +1220,15 @@ function SkimSyncView({
 
   const activeLineIndex = Math.floor(currentWordIndex / 4);
 
+  useEffect(() => {
+    if (!activeLineRef.current || !lyricsScrollRef.current) return;
+
+    activeLineRef.current.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }, [activeLineIndex]);
+
   const progress =
     lyricWords.length > 0
       ? Math.min(
@@ -1011,10 +1236,6 @@ function SkimSyncView({
           Math.round(((currentWordIndex + 1) / lyricWords.length) * 100)
         )
       : 0;
-
-  const currentLine = lyricLines[activeLineIndex] || lyricLines[0] || [];
-  const nextLine = lyricLines[activeLineIndex + 1] || [];
-  const previousLine = lyricLines[activeLineIndex - 1] || [];
 
   const togglePlay = () => {
     if (!aiScript || isLoading) return;
@@ -1029,6 +1250,7 @@ function SkimSyncView({
       window.speechSynthesis.resume();
     } else {
       window.speechSynthesis.cancel();
+      setCurrentCharIndex(0);
 
       utteranceRef.current = new SpeechSynthesisUtterance(aiScript);
 
@@ -1050,8 +1272,8 @@ function SkimSyncView({
   };
 
   return (
-    <div className="mx-auto max-w-[1180px] pb-[132px] relative">
-      <header className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <div className="relative mx-auto max-w-[1180px] pb-28 sm:pb-32">
+      <header className="mb-6 flex flex-col gap-5 lg:mb-8 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-3xl">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -1062,7 +1284,7 @@ function SkimSyncView({
             Lyric Summary Mode
           </motion.div>
 
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl lg:text-5xl">
+          <h1 className="break-words text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl lg:text-5xl">
             {displayTitle}
           </h1>
 
@@ -1074,17 +1296,17 @@ function SkimSyncView({
 
         <button
           onClick={onBack}
-          className="w-fit rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#5A22C3] transition-colors"
+          className="w-fit rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-[#5A22C3]"
         >
           Close Session
         </button>
       </header>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:gap-6">
         <section className="lg:col-span-4">
-          <div className="sticky top-28 overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:p-6">
             <div className="relative z-10 flex flex-col items-center text-center">
-              <div className="relative mb-8 mt-4 flex h-64 w-64 items-center justify-center">
+              <div className="relative mb-6 mt-2 flex h-48 w-48 items-center justify-center sm:h-60 sm:w-60 lg:h-64 lg:w-64">
                 <motion.div
                   animate={isPlaying ? { rotate: 360 } : { rotate: 0 }}
                   transition={{
@@ -1092,7 +1314,7 @@ function SkimSyncView({
                     repeat: Infinity,
                     ease: "linear",
                   }}
-                  className="absolute h-56 w-56 rounded-full border border-dashed border-[#5A22C3]/30"
+                  className="absolute h-44 w-44 rounded-full border border-dashed border-[#5A22C3]/30 sm:h-56 sm:w-56"
                 />
 
                 <motion.div
@@ -1102,10 +1324,10 @@ function SkimSyncView({
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
-                  className="absolute h-64 w-64 rounded-full border border-[#5A22C3]/10"
+                  className="absolute h-48 w-48 rounded-full border border-[#5A22C3]/10 sm:h-64 sm:w-64"
                 />
 
-                <div className="absolute h-[214px] w-[214px] rounded-full bg-white" />
+                <div className="absolute h-40 w-40 rounded-full bg-white sm:h-[214px] sm:w-[214px]" />
 
                 <motion.div
                   animate={
@@ -1116,7 +1338,7 @@ function SkimSyncView({
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
-                  className="relative flex h-44 w-44 items-center justify-center rounded-full border border-[#5A22C3]/20 bg-[#F3E8FF]/50"
+                  className="relative flex h-32 w-32 items-center justify-center rounded-full border border-[#5A22C3]/20 bg-[#F3E8FF]/50 sm:h-44 sm:w-44"
                 />
 
                 <motion.div
@@ -1130,7 +1352,7 @@ function SkimSyncView({
                 />
 
                 <Mic2
-                  className={`absolute z-10 h-12 w-12 transition-colors ${
+                  className={`absolute z-10 h-10 w-10 transition-colors sm:h-12 sm:w-12 ${
                     isPlaying ? "text-[#5A22C3]" : "text-gray-400"
                   }`}
                 />
@@ -1146,7 +1368,7 @@ function SkimSyncView({
                 {isLoading ? "Preparing" : isPlaying ? "Speaking" : "Ready"}
               </div>
 
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">
                 {isPlaying ? "Echo is live" : "Press play to start"}
               </h2>
 
@@ -1158,8 +1380,8 @@ function SkimSyncView({
                   : "AI voice summary loaded from your document"}
               </p>
 
-              <div className="mt-8 grid w-full grid-cols-2 gap-3">
-                <div className="rounded-lg border border-gray-100 bg-gray-50 p-4 text-left">
+              <div className="mt-6 grid w-full grid-cols-2 gap-3 sm:mt-8">
+                <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-left">
                   <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#5A22C3]">
                     Words
                   </p>
@@ -1169,7 +1391,7 @@ function SkimSyncView({
                   </p>
                 </div>
 
-                <div className="rounded-lg border border-gray-100 bg-gray-50 p-4 text-left">
+                <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-left">
                   <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#5A22C3]">
                     Progress
                   </p>
@@ -1182,9 +1404,9 @@ function SkimSyncView({
         </section>
 
         <section className="lg:col-span-8">
-          <div className="relative min-h-[620px] overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-8 lg:p-10">
+          <div className="relative min-h-[520px] overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:min-h-[620px] sm:p-8 lg:p-10">
             {isLoading ? (
-              <div className="relative z-10 flex min-h-[540px] flex-col items-center justify-center text-center text-gray-400">
+              <div className="relative z-10 flex min-h-[460px] flex-col items-center justify-center text-center text-gray-400 sm:min-h-[540px]">
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{
@@ -1196,7 +1418,7 @@ function SkimSyncView({
                   <BrainCircuit size={40} className="mb-6 text-[#5A22C3]/50" />
                 </motion.div>
 
-                <p className="text-lg font-medium text-gray-600">
+                <p className="text-base font-medium text-gray-600 sm:text-lg">
                   AI is reading and parsing your file...
                 </p>
 
@@ -1205,20 +1427,20 @@ function SkimSyncView({
                 </p>
               </div>
             ) : (
-              <div className="relative z-10 flex min-h-[540px] flex-col justify-between">
+              <div className="relative z-10 flex min-h-[480px] flex-col justify-between sm:min-h-[540px]">
                 <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#F3E8FF] text-[#5A22C3] border border-[#5A22C3]/20">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#5A22C3]/20 bg-[#F3E8FF] text-[#5A22C3]">
                       <Wand2 size={18} />
                     </div>
 
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
                         Now Showing
                       </p>
 
-                      <p className="text-sm font-medium text-gray-700">
-                        4-word lyric phrases
+                      <p className="truncate text-sm font-medium text-gray-700">
+                        Auto-scrolling lyric phrases
                       </p>
                     </div>
                   </div>
@@ -1229,60 +1451,72 @@ function SkimSyncView({
                   </div>
                 </div>
 
-                <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center py-10 text-center">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={activeLineIndex}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-                      className="w-full"
-                    >
-                      <div className="mb-6 min-h-[32px] text-lg font-medium text-gray-300 sm:text-xl">
-                        {previousLine.map((word) => word.text).join(" ")}
-                      </div>
+                <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center py-4 text-center sm:py-8">
+                  <div
+                    ref={lyricsScrollRef}
+                    className="relative h-[360px] w-full overflow-y-auto scroll-smooth px-1 py-24 sm:h-[460px] sm:px-4 sm:py-28"
+                  >
+                    <div className="flex flex-col gap-4 sm:gap-6">
+                      {lyricLines.map((line, lineIndex) => {
+                        const isActiveLine = lineIndex === activeLineIndex;
+                        const isPastLine = lineIndex < activeLineIndex;
 
-                      <div className="relative rounded-xl border border-[#5A22C3]/10 bg-[#F3E8FF]/20 px-6 py-10 sm:px-10 sm:py-14">
-                        <div className="relative flex flex-wrap items-center justify-center gap-x-3 gap-y-2 sm:gap-x-4">
-                          {currentLine.map((word, index) => {
-                            const hasBeenSpoken = word.id <= currentWordIndex;
-                            const isCurrent = word.id === currentWordIndex;
+                        return (
+                          <motion.div
+                            key={lineIndex}
+                            ref={isActiveLine ? activeLineRef : undefined}
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{
+                              opacity: isActiveLine
+                                ? 1
+                                : isPastLine
+                                ? 0.28
+                                : 0.18,
+                              y: 0,
+                              scale: isActiveLine ? 1 : 0.96,
+                            }}
+                            transition={{
+                              duration: 0.25,
+                              ease: "easeOut",
+                            }}
+                            className={`rounded-2xl px-3 py-4 transition-colors sm:px-6 sm:py-5 ${
+                              isActiveLine
+                                ? "border border-[#5A22C3]/10 bg-[#F3E8FF]/30"
+                                : "border border-transparent"
+                            }`}
+                          >
+                            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 sm:gap-x-3 sm:gap-y-2">
+                              {line.map((word) => {
+                                const hasBeenSpoken =
+                                  word.id <= currentWordIndex;
+                                const isCurrent =
+                                  word.id === currentWordIndex;
 
-                            return (
-                              <motion.span
-                                key={`${word.id}-${word.text}`}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{
-                                  opacity:
-                                    hasBeenSpoken || !isPlaying ? 1 : 0.3,
-                                  y: 0,
-                                }}
-                                transition={{
-                                  delay: index * 0.05,
-                                  duration: 0.2,
-                                  ease: "easeOut",
-                                }}
-                                className={`inline-block text-3xl font-semibold leading-tight transition-colors sm:text-4xl lg:text-5xl ${
-                                  isCurrent
-                                    ? "text-[#5A22C3]"
-                                    : hasBeenSpoken || !isPlaying
-                                    ? "text-gray-800"
-                                    : "text-gray-300"
-                                }`}
-                              >
-                                {word.text}
-                              </motion.span>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="mt-6 min-h-[32px] text-lg font-medium text-gray-300 sm:text-xl">
-                        {nextLine.map((word) => word.text).join(" ")}
-                      </div>
-                    </motion.div>
-                  </AnimatePresence>
+                                return (
+                                  <span
+                                    key={`${word.id}-${word.text}`}
+                                    className={`inline-block font-semibold leading-tight transition-colors ${
+                                      isActiveLine
+                                        ? "text-3xl sm:text-4xl lg:text-5xl"
+                                        : "text-xl sm:text-2xl"
+                                    } ${
+                                      isCurrent
+                                        ? "text-[#5A22C3]"
+                                        : hasBeenSpoken
+                                        ? "text-gray-800"
+                                        : "text-gray-400"
+                                    }`}
+                                  >
+                                    {word.text}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -1306,8 +1540,8 @@ function SkimSyncView({
         </section>
       </div>
 
-      <div className="fixed bottom-6 left-1/2 z-50 w-[calc(100%-2rem)] max-w-[400px] -translate-x-1/2 sm:bottom-10">
-        <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+      <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-[400px] -translate-x-1/2 sm:bottom-8">
+        <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-xl">
           <div className="flex items-center justify-center gap-4 sm:gap-6">
             <button
               disabled={isLoading}
@@ -1319,7 +1553,7 @@ function SkimSyncView({
             <button
               onClick={togglePlay}
               disabled={isLoading}
-              className="group relative flex h-14 w-14 items-center justify-center rounded-full bg-[#5A22C3] text-white transition-colors hover:bg-[#4a1ca3] disabled:bg-gray-300 shadow-md"
+              className="group relative flex h-14 w-14 items-center justify-center rounded-full bg-[#5A22C3] text-white shadow-md transition-colors hover:bg-[#4a1ca3] disabled:bg-gray-300"
             >
               {isPlaying ? (
                 <Pause size={22} fill="white" />
@@ -1355,14 +1589,14 @@ function SidebarItem({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors duration-200 ${
+      className={`flex shrink-0 cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors duration-200 md:w-full ${
         active
           ? "bg-[#F3E8FF] font-medium text-[#5A22C3]"
           : "text-gray-500 hover:bg-gray-50 hover:text-[#5A22C3]"
       }`}
     >
       {icon}
-      <span className="text-[14px]">{label}</span>
+      <span className="whitespace-nowrap text-[14px]">{label}</span>
     </button>
   );
 }
@@ -1389,34 +1623,34 @@ function ExamView({
   };
 
   return (
-    <div className="w-full max-w-[1000px] mx-auto">
+    <div className="mx-auto w-full max-w-[1000px]">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-1">
+        <h1 className="mb-1 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
           Exam Mode
         </h1>
 
-        <p className="text-gray-500 text-sm">
+        <p className="text-sm text-gray-500">
           {selectedFiles.length === 0
             ? "Select, upload, or capture study materials to generate study briefs"
             : `${selectedFiles.length} documents selected`}
         </p>
       </header>
 
-      <div className="w-full border border-dashed border-gray-300 rounded-xl bg-gray-50 p-8 flex flex-col items-center justify-center mb-10 hover:border-[#5A22C3] hover:bg-[#F3E8FF]/30 transition-colors group">
-        <div className="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center mb-4 text-[#5A22C3] group-hover:bg-[#F3E8FF] group-hover:border-[#F3E8FF] transition-colors">
+      <div className="mb-10 flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-6 transition-colors hover:border-[#5A22C3] hover:bg-[#F3E8FF]/30 sm:p-8">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-gray-200 bg-white text-[#5A22C3] transition-colors">
           <Upload size={20} />
         </div>
 
-        <h3 className="text-lg font-medium mb-1">Upload Study Materials</h3>
+        <h3 className="mb-1 text-lg font-medium">Upload Study Materials</h3>
 
-        <p className="text-gray-500 text-sm mb-5 text-center">
+        <p className="mb-5 text-center text-sm text-gray-500">
           Use PDFs, Word Docs, notes, screenshots, or camera captures.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row">
           <button
             onClick={onBrowse}
-            className="bg-[#5A22C3] text-white px-5 py-2 rounded-lg font-medium text-sm hover:bg-[#4a1ca3] shadow-md transition-colors flex items-center gap-2"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#5A22C3] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#4a1ca3] sm:w-auto"
           >
             <FolderOpen size={16} />
             Browse Files
@@ -1424,7 +1658,7 @@ function ExamView({
 
           <button
             onClick={onCapture}
-            className="bg-white text-gray-800 border border-gray-200 px-5 py-2 rounded-lg font-medium text-sm hover:bg-gray-50 hover:text-[#5A22C3] shadow-sm transition-colors flex items-center gap-2"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50 hover:text-[#5A22C3] sm:w-auto"
           >
             <Camera size={16} />
             Use Camera
@@ -1432,8 +1666,8 @@ function ExamView({
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold flex items-center gap-2 text-gray-900">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
           <Layers size={18} className="text-[#5A22C3]" />
           Available Vault
         </h2>
@@ -1445,7 +1679,7 @@ function ExamView({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
               onClick={onViewBriefs}
-              className="px-4 py-2 bg-[#5A22C3] text-white rounded-lg font-medium text-sm hover:bg-[#4a1ca3] transition-colors flex items-center gap-2 shadow-md"
+              className="flex items-center justify-center gap-2 rounded-lg bg-[#5A22C3] px-4 py-2 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#4a1ca3]"
             >
               <Sparkles size={16} />
               Generate Flashcards
@@ -1454,7 +1688,7 @@ function ExamView({
         </AnimatePresence>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {allFiles.map((file: StudyFile) => (
           <ExamFileRow
             key={file.id}
@@ -1479,23 +1713,23 @@ function ExamFileRow({
 }) {
   return (
     <div
-      className={`bg-white border rounded-xl p-4 transition-colors flex items-center justify-between gap-4 cursor-pointer ${
+      className={`flex cursor-pointer items-center justify-between gap-4 rounded-2xl border bg-white p-4 transition-colors ${
         isSelected
           ? "border-[#5A22C3] bg-[#F3E8FF]/30"
           : "border-gray-200 hover:border-gray-300"
       }`}
       onClick={onSelect}
     >
-      <div className="flex items-center gap-4 flex-1 min-w-0">
+      <div className="flex min-w-0 flex-1 items-center gap-4">
         <div
-          className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
-            isSelected ? "bg-[#5A22C3] border-[#5A22C3]" : "border-gray-300"
+          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+            isSelected ? "border-[#5A22C3] bg-[#5A22C3]" : "border-gray-300"
           }`}
         >
           {isSelected && <CheckCircle2 size={14} className="text-white" />}
         </div>
 
-        <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-100 text-gray-600 shrink-0">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600">
           {isImageFile(file) ? (
             <ImageIcon
               size={18}
@@ -1511,16 +1745,16 @@ function ExamFileRow({
 
         <div className="min-w-0">
           <h4
-            className={`font-medium text-[14px] truncate mb-0.5 ${
+            className={`mb-0.5 truncate text-[14px] font-medium ${
               isSelected ? "text-[#5A22C3]" : "text-gray-900"
             }`}
           >
             {file.name}
           </h4>
 
-          <div className="flex items-center gap-2 text-gray-500 text-[11px] uppercase tracking-wider font-medium">
+          <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-gray-500">
             <span>{file.format}</span>
-            <span className="w-1 h-1 rounded-full bg-gray-300" />
+            <span className="h-1 w-1 rounded-full bg-gray-300" />
             <span>{file.date}</span>
           </div>
         </div>
@@ -1574,72 +1808,72 @@ function PostBriefView({
   };
 
   return (
-    <div className="w-full max-w-[1000px] mx-auto">
-      <header className="mb-10 flex items-center justify-between">
+    <div className="mx-auto w-full max-w-[1000px]">
+      <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-1">
+          <h1 className="mb-1 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
             Study Session Active
           </h1>
 
-          <p className="text-gray-500 text-sm">Master your extracted insights</p>
+          <p className="text-sm text-gray-500">Master your extracted insights</p>
         </div>
 
         <button
           onClick={onBack}
-          className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 hover:text-[#5A22C3] transition-colors text-sm"
+          className="w-fit rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-[#5A22C3]"
         >
           End Session
         </button>
       </header>
 
       <div className="mb-12 flex flex-col items-center">
-        <p className="text-[#5A22C3] font-medium mb-6 uppercase tracking-wider text-xs">
+        <p className="mb-6 text-xs font-medium uppercase tracking-wider text-[#5A22C3]">
           Tap card to flip
         </p>
 
         {allHighlights.length > 0 ? (
-          <div className="w-full max-w-2xl flex flex-col items-center">
-            <div className="w-full perspective mb-8">
+          <div className="flex w-full max-w-2xl flex-col items-center">
+            <div className="perspective mb-8 w-full">
               <motion.div
                 onClick={() => toggleFlip(currentCardIndex)}
-                className="w-full h-[350px] cursor-pointer relative preserve-3d transition-transform duration-500 ease-out"
+                className="preserve-3d relative h-[320px] w-full cursor-pointer transition-transform duration-500 ease-out sm:h-[350px]"
                 animate={{
                   rotateY: flippedCards.has(currentCardIndex) ? 180 : 0,
                 }}
               >
-                <div className="absolute inset-0 backface-hidden bg-white rounded-2xl border border-gray-200 p-10 flex flex-col items-center justify-center text-center shadow-md hover:border-[#5A22C3]/50 transition-colors">
-                  <div className="text-2xl font-semibold text-gray-900">
+                <div className="backface-hidden absolute inset-0 flex flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-md transition-colors hover:border-[#5A22C3]/50 sm:p-10">
+                  <div className="text-xl font-semibold text-gray-900 sm:text-2xl">
                     {allHighlights[currentCardIndex].title}
                   </div>
 
-                  <div className="absolute bottom-6 text-gray-400 text-xs font-medium uppercase tracking-wider">
+                  <div className="absolute bottom-6 text-xs font-medium uppercase tracking-wider text-gray-400">
                     Front
                   </div>
                 </div>
 
-                <div className="absolute inset-0 backface-hidden bg-[#5A22C3] rounded-2xl p-10 flex flex-col items-center justify-center text-center transform rotate-y-180 shadow-md">
-                  <div className="text-xl font-medium leading-relaxed text-white">
+                <div className="backface-hidden rotate-y-180 absolute inset-0 flex transform flex-col items-center justify-center rounded-2xl bg-[#5A22C3] p-8 text-center shadow-md sm:p-10">
+                  <div className="text-lg font-medium leading-relaxed text-white sm:text-xl">
                     {allHighlights[currentCardIndex].content}
                   </div>
 
-                  <div className="absolute bottom-6 text-white/50 text-xs font-medium uppercase tracking-wider">
+                  <div className="absolute bottom-6 text-xs font-medium uppercase tracking-wider text-white/50">
                     Back
                   </div>
                 </div>
               </motion.div>
             </div>
 
-            <div className="flex items-center gap-4 bg-white border border-gray-200 p-2 rounded-full shadow-sm">
+            <div className="flex items-center gap-4 rounded-full border border-gray-200 bg-white p-2 shadow-sm">
               <button
                 onClick={() =>
                   setCurrentCardIndex(Math.max(0, currentCardIndex - 1))
                 }
-                className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 hover:bg-[#F3E8FF] hover:text-[#5A22C3] text-gray-700 transition-colors"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 text-gray-700 transition-colors hover:bg-[#F3E8FF] hover:text-[#5A22C3]"
               >
                 <SkipBack size={16} />
               </button>
 
-              <span className="font-medium text-gray-500 text-sm min-w-[3rem] text-center">
+              <span className="min-w-[3rem] text-center text-sm font-medium text-gray-500">
                 {currentCardIndex + 1} / {allHighlights.length}
               </span>
 
@@ -1649,14 +1883,14 @@ function PostBriefView({
                     Math.min(allHighlights.length - 1, currentCardIndex + 1)
                   )
                 }
-                className="w-10 h-10 flex items-center justify-center rounded-full bg-[#5A22C3] hover:bg-[#4a1ca3] text-white transition-colors shadow-sm"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#5A22C3] text-white shadow-sm transition-colors hover:bg-[#4a1ca3]"
               >
                 <SkipForward size={16} />
               </button>
             </div>
           </div>
         ) : (
-          <p className="text-center text-gray-500 py-12 font-medium">
+          <p className="py-12 text-center font-medium text-gray-500">
             No definitions extracted from these files.
           </p>
         )}
@@ -1670,72 +1904,83 @@ function FilesView({
   searchQuery,
   setSearchQuery,
   onStartSkimSync,
+  isCheckingLength,
 }: any) {
   return (
-    <div className="w-full max-w-[1200px] mx-auto">
-      <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div className="mx-auto w-full max-w-[1200px]">
+      <header className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-1">
+          <h1 className="mb-1 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
             Vault
           </h1>
 
-          <p className="text-gray-500 text-sm">
+          <p className="text-sm text-gray-500">
             {files.length} documents and images securely stored
           </p>
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <div className="relative w-full md:w-72">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
 
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search your vault..."
-            className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 w-full md:w-64 focus:outline-none focus:border-[#5A22C3] focus:ring-1 focus:ring-[#5A22C3] transition-all"
+            className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-900 transition-all focus:border-[#5A22C3] focus:outline-none focus:ring-1 focus:ring-[#5A22C3]"
           />
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {files.map((file: StudyFile) => (
-          <div
-            key={file.id}
-            className="bg-white border border-gray-200 rounded-xl p-5 hover:border-[#5A22C3]/50 transition-colors flex flex-col"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-10 h-10 rounded-lg bg-[#F3E8FF]/50 border border-[#F3E8FF] text-[#5A22C3] flex items-center justify-center">
-                {isImageFile(file) ? (
-                  <ImageIcon size={18} />
-                ) : (
-                  <FileText size={18} />
-                )}
+      {files.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center">
+          <p className="text-sm font-medium text-gray-700">No files found.</p>
+          <p className="mt-1 text-sm text-gray-400">
+            Upload or capture a study material first.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {files.map((file: StudyFile) => (
+            <div
+              key={file.id}
+              className="flex flex-col rounded-2xl border border-gray-200 bg-white p-5 transition-colors hover:border-[#5A22C3]/50"
+            >
+              <div className="mb-4 flex items-start justify-between">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#F3E8FF] bg-[#F3E8FF]/50 text-[#5A22C3]">
+                  {isImageFile(file) ? (
+                    <ImageIcon size={18} />
+                  ) : (
+                    <FileText size={18} />
+                  )}
+                </div>
+
+                <span className="rounded bg-gray-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+                  {file.format}
+                </span>
               </div>
 
-              <span className="bg-gray-100 px-2 py-1 rounded text-[10px] font-semibold text-gray-600 uppercase tracking-wider">
-                {file.format}
-              </span>
+              <h3 className="mb-1 line-clamp-2 text-[15px] font-medium leading-tight text-gray-900">
+                {file.name}
+              </h3>
+
+              <div className="mb-6 mt-auto flex items-center gap-1.5 text-[12px] text-gray-500">
+                <Clock size={12} />
+                {file.date} • {file.size}
+              </div>
+
+              <button
+                onClick={() => onStartSkimSync(file)}
+                disabled={isCheckingLength}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-900 transition-colors hover:border-[#F3E8FF] hover:bg-[#F3E8FF] hover:text-[#5A22C3] disabled:opacity-50"
+              >
+                <Sparkles size={14} />
+                {isCheckingLength ? "Checking..." : "Skim-Sync"}
+              </button>
             </div>
-
-            <h3 className="font-medium text-[15px] text-gray-900 leading-tight mb-1 line-clamp-2">
-              {file.name}
-            </h3>
-
-            <div className="text-[12px] text-gray-500 mb-6 mt-auto flex items-center gap-1.5">
-              <Clock size={12} />
-              {file.date} • {file.size}
-            </div>
-
-            <button
-              onClick={() => onStartSkimSync(file)}
-              className="w-full py-2.5 bg-white border border-gray-200 hover:bg-[#F3E8FF] hover:border-[#F3E8FF] hover:text-[#5A22C3] text-gray-900 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2"
-            >
-              <Sparkles size={14} />
-              Skim-Sync
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1745,81 +1990,100 @@ function HomeView({
   onBrowse,
   onCapture,
   isUploading,
+  isCheckingLength,
   onStartSkimSync,
 }: any) {
+  const isBusy = isUploading || isCheckingLength;
+
   return (
-    <div className="max-w-[900px] mx-auto">
+    <div className="mx-auto max-w-[900px]">
       <header className="mb-8 text-center md:text-left">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-1">
+        <h1 className="mb-1 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
           Welcome back.
         </h1>
 
-        <p className="text-gray-500 text-sm">
+        <p className="text-sm text-gray-500">
           Upload a document, browse files, or capture notes with your camera.
         </p>
       </header>
 
-      <div className="w-full border border-dashed border-gray-300 bg-gray-50 rounded-xl p-10 flex flex-col items-center justify-center mb-12 hover:border-[#5A22C3] hover:bg-[#F3E8FF]/30 transition-colors group">
-        <div className="w-14 h-14 bg-white border border-gray-200 rounded-full flex items-center justify-center mb-4 group-hover:border-[#5A22C3]/30 transition-colors">
+      <div className="mb-12 flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-6 transition-colors hover:border-[#5A22C3] hover:bg-[#F3E8FF]/30 sm:p-10">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-gray-200 bg-white transition-colors">
           <Upload
             size={24}
-            className={`text-gray-600 group-hover:text-[#5A22C3] transition-colors ${
-              isUploading ? "animate-bounce" : ""
+            className={`text-gray-600 transition-colors ${
+              isBusy ? "animate-bounce" : ""
             }`}
           />
         </div>
 
-        <h3 className="text-lg font-medium mb-1 text-gray-900">
-          {isUploading ? "Uploading to secure vault..." : "Add study material"}
+        <h3 className="mb-1 text-lg font-medium text-gray-900">
+          {isUploading
+            ? "Uploading to secure vault..."
+            : isCheckingLength
+            ? "Checking document length..."
+            : "Add study material"}
         </h3>
 
-        <p className="text-gray-500 text-sm mb-5 text-center max-w-md">
+        <p className="mb-5 max-w-md text-center text-sm text-gray-500">
           Upload PDFs, Docs, spreadsheets, text files, screenshots, or take a
           photo of notes and let Echo summarize it.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+        <div className="flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row">
           <button
-            disabled={isUploading}
+            disabled={isBusy}
             onClick={onBrowse}
-            className="bg-[#5A22C3] text-white px-5 py-2 rounded-lg font-medium text-sm hover:bg-[#4a1ca3] transition-colors shadow-md flex items-center gap-2 disabled:bg-gray-300"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#5A22C3] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#4a1ca3] disabled:bg-gray-300 sm:w-auto"
           >
             <FolderOpen size={16} />
             Browse Files
           </button>
 
           <button
-            disabled={isUploading}
+            disabled={isBusy}
             onClick={onCapture}
-            className="bg-white text-gray-800 border border-gray-200 px-5 py-2 rounded-lg font-medium text-sm hover:bg-gray-50 hover:text-[#5A22C3] transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50 hover:text-[#5A22C3] disabled:opacity-50 sm:w-auto"
           >
             <Camera size={16} />
             Use Camera
           </button>
         </div>
 
-        <p className="mt-4 text-[11px] text-gray-400 text-center">
+        <p className="mt-4 text-center text-[11px] text-gray-400">
           Camera capture works on supported desktop browsers, phones, and
           tablets.
         </p>
       </div>
 
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold tracking-tight text-gray-900 flex items-center gap-2">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-gray-900">
           <Clock size={18} className="text-[#5A22C3]" />
           Recent Activity
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {files.slice(0, 4).map((file: StudyFile) => (
-          <FileRow
-            key={file.id}
-            file={file}
-            onStartSkimSync={onStartSkimSync}
-          />
-        ))}
-      </div>
+      {files.length === 0 ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center">
+          <p className="text-sm font-medium text-gray-700">
+            No recent files yet.
+          </p>
+          <p className="mt-1 text-sm text-gray-400">
+            Upload or capture your first study material.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {files.slice(0, 4).map((file: StudyFile) => (
+            <FileRow
+              key={file.id}
+              file={file}
+              isCheckingLength={isCheckingLength}
+              onStartSkimSync={onStartSkimSync}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1827,23 +2091,25 @@ function HomeView({
 function FileRow({
   file,
   onStartSkimSync,
+  isCheckingLength,
 }: {
   file: StudyFile;
   onStartSkimSync: (file: StudyFile) => void;
+  isCheckingLength: boolean;
 }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 hover:border-[#5A22C3]/50 flex items-center justify-between transition-colors cursor-default group">
-      <div className="flex items-center gap-4 min-w-0 pr-4">
-        <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-50 border border-gray-100 text-gray-600 group-hover:bg-[#F3E8FF] group-hover:text-[#5A22C3] transition-colors shrink-0">
+    <div className="group flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 transition-colors hover:border-[#5A22C3]/50">
+      <div className="flex min-w-0 items-center gap-4 pr-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-100 bg-gray-50 text-gray-600 transition-colors group-hover:bg-[#F3E8FF] group-hover:text-[#5A22C3]">
           {isImageFile(file) ? <ImageIcon size={18} /> : <FileText size={18} />}
         </div>
 
         <div className="min-w-0">
-          <h4 className="font-medium text-[14px] text-gray-900 group-hover:text-[#5A22C3] transition-colors truncate mb-0.5">
+          <h4 className="mb-0.5 truncate text-[14px] font-medium text-gray-900 transition-colors group-hover:text-[#5A22C3]">
             {file.name}
           </h4>
 
-          <span className="text-[11px] text-gray-500 tracking-wider uppercase">
+          <span className="text-[11px] uppercase tracking-wider text-gray-500">
             {file.format} • {file.date}
           </span>
         </div>
@@ -1851,7 +2117,8 @@ function FileRow({
 
       <button
         onClick={() => onStartSkimSync(file)}
-        className="w-8 h-8 shrink-0 bg-gray-50 border border-gray-200 hover:bg-[#5A22C3] hover:border-[#5A22C3] hover:text-white text-gray-500 rounded-full flex items-center justify-center transition-colors shadow-sm"
+        disabled={isCheckingLength}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-500 shadow-sm transition-colors hover:border-[#5A22C3] hover:bg-[#5A22C3] hover:text-white disabled:opacity-50"
       >
         <Play size={14} className="ml-0.5 fill-current" />
       </button>
