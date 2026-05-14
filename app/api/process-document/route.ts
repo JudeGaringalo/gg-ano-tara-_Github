@@ -167,12 +167,12 @@ The user uploaded or captured an image. Your job is to inspect the image and est
 The app rule is now based on readable text count:
 
 ACCEPT:
-- Accept the image if it has 3 or more readable words.
+- Accept the image if it has 5 or more readable words.
 - If it has more than 10 readable words, treat it as valid study/document material and create a useful spoken summary when summarization is requested.
 
 REJECT:
-- Reject the image if it has fewer than 3 readable words.
-- Reject blank, blurry, decorative, random, or non-document images when fewer than 3 readable words can be detected.
+- Reject the image if it has fewer than 5 readable words.
+- Reject blank, blurry, decorative, random, or non-document images when fewer than 5 readable words can be detected.
 
 IMPORTANT:
 - Do not reject only because the image is not obviously a school document.
@@ -191,18 +191,18 @@ Return ONLY valid JSON in this exact format:
 }
 
 Decision rules:
-- readableWordCount < 3: accepted must be false.
-- readableWordCount >= 3: accepted must be true.
+- readableWordCount < 5: accepted must be false.
+- readableWordCount >= 5: accepted must be true.
 - readableWordCount > 10 and summarization is requested: script must summarize the readable content.
 - validateOnly/checkOnly: script must be empty.
 
 If rejected, use this rejectionReason:
-"This image has too little readable text. Please upload a clearer page, notes, slide, worksheet, screenshot, or document."
+"This image has fewer than 5 readable words. Please upload a clearer page, notes, slide, worksheet, screenshot, or document."
 `;
 
       const userText = validateOnly || checkOnly
-        ? "Validate this image by readable word count. If it has 3 or more readable words, accept it. If it has fewer than 3 readable words, reject it. Do not summarize it yet."
-        : "Validate this image by readable word count. If it has more than 10 readable words, accept it and summarize the readable content. If it has 3 to 10 readable words, accept it and provide a brief summary. If it has fewer than 3 readable words, reject it.";
+        ? "Validate this image by readable word count. If it has 5 or more readable words, accept it. If it has fewer than 5 readable words, reject it. Do not summarize it yet."
+        : "Validate this image by readable word count. If it has more than 10 readable words, accept it and summarize the readable content. If it has 5 to 10 readable words, accept it and provide a brief summary. If it has fewer than 5 readable words, reject it.";
 
       const chatCompletion = await groq.chat.completions.create({
         model: GROQ_VISION_MODEL,
@@ -239,7 +239,7 @@ If rejected, use this rejectionReason:
           ? parsedImageResult.readableWordCount
           : countWords(parsedImageResult.extractedText || "");
 
-      const hasEnoughReadableText = readableWordCount >= 3;
+      const hasEnoughReadableText = readableWordCount >= 5;
 
       if (!hasEnoughReadableText) {
         return NextResponse.json({
@@ -248,7 +248,7 @@ If rejected, use this rejectionReason:
           imageMode: parsedImageResult.imageMode || "unclear_image",
           readableWordCount,
           rejectionReason:
-            "This image has too little readable text. Please upload a clearer page, notes, slide, worksheet, screenshot, or document.",
+            "This image has fewer than 5 readable words. Please upload a clearer page, notes, slide, worksheet, screenshot, or document.",
           script: "",
         });
       }
