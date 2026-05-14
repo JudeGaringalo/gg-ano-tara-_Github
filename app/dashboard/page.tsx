@@ -1436,10 +1436,19 @@ function SkimSyncView({
   files: StudyFile[];
   onBack: () => void;
 }) {
+  const supabase = createClient();
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [aiScript, setAiScript] = useState("");
   const [currentCharIndex, setCurrentCharIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [skimQuizQuestions, setSkimQuizQuestions] = useState<QuizQuestion[]>([]);
+  const [skimQuizAnswers, setSkimQuizAnswers] = useState<Record<string, number>>({});
+  const [isSkimQuizLoading, setIsSkimQuizLoading] = useState(false);
+  const [skimQuizError, setSkimQuizError] = useState<string | null>(null);
+  const [isSkimQuizSubmitted, setIsSkimQuizSubmitted] = useState(false);
+  const [isSkimQuizDismissed, setIsSkimQuizDismissed] = useState(false);
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const lyricsScrollRef = useRef<HTMLDivElement | null>(null);
@@ -1466,6 +1475,7 @@ function SkimSyncView({
   >([]);
   const activeSpeechChunkIndexRef = useRef(0);
   const shouldContinueSpeechRef = useRef(false);
+  const hasRequestedSkimQuizRef = useRef(false);
 
   const displayTitle =
     files.length > 1
@@ -1523,6 +1533,12 @@ function SkimSyncView({
       try {
         setIsLoading(true);
         setIsPlaying(false);
+        setSkimQuizQuestions([]);
+        setSkimQuizAnswers({});
+        setSkimQuizError(null);
+        setIsSkimQuizSubmitted(false);
+        setIsSkimQuizDismissed(false);
+        hasRequestedSkimQuizRef.current = false;
         resetSpeechTracking();
         window.speechSynthesis.cancel();
 
@@ -1648,6 +1664,16 @@ function SkimSyncView({
         )
       : 0;
 
+  const skimQuizAnsweredCount = skimQuizQuestions.filter(
+    (question) => skimQuizAnswers[question.id] !== undefined
+  ).length;
+
+  const skimQuizScore = skimQuizQuestions.reduce((total, question) => {
+    return skimQuizAnswers[question.id] === question.correctAnswerIndex
+      ? total + 1
+      : total;
+  }, 0);
+
   const findWordIndexAtOrAfterChar = (charIndex: number) => {
     if (!lyricWords.length) return 0;
 
@@ -1769,6 +1795,132 @@ function SkimSyncView({
     }, 180);
   };
 
+  const generateSkimQuiz = async () => {
+    if (hasRequestedSkimQuizRef.current || isSkimQuizLoading || !files.length) {
+      return;
+    }
+
+    hasRequestedSkimQuizRef.current = true;
+    setIsSkimQuizLoading(true);
+    setSkimQuizError(null);
+    setSkimQuizQuestions([]);
+    setSkimQuizAnswers({});
+    setIsSkimQuizSubmitted(false);
+    setIsSkimQuizDismissed(false);
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error("Missing active session.");
+      }
+
+      const res = await fetch("/api/generate-quiz", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          questionCount: 3,
+          files: files.map((file) => ({
+            fileName: file.name,
+            filePath: file.filePath,
+            fileType: file.format,
+          })),
+        }),
+      });
+
+      const responseText = await res.text();
+
+      let data: any = null;
+
+      try {
+        data = responseText ? JSON.parse(responseText) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          data?.error ||
+            responseText?.slice(0, 300) ||
+            "Could not generate quick check."
+        );
+      }
+
+      const cleanQuestions: QuizQuestion[] = Array.isArray(data?.questions)
+        ? data.questions
+            .slice(0, 3)
+            .map((question: any, index: number) => {
+              const options = Array.isArray(question.options)
+                ? question.options
+                    .map((option: unknown) => String(option || "").trim())
+                    .slice(0, 4)
+                : [];
+
+              return {
+                id: String(question.id || `skim-question-${index + 1}`),
+                question: String(question.question || "").trim(),
+                options,
+                correctAnswerIndex:
+                  typeof question.correctAnswerIndex === "number"
+                    ? Math.min(Math.max(question.correctAnswerIndex, 0), 3)
+                    : 0,
+                explanation: String(question.explanation || "").trim(),
+                sourceFile: question.sourceFile
+                  ? String(question.sourceFile)
+                  : undefined,
+              };
+            })
+            .filter(
+              (question: QuizQuestion) =>
+                question.question.length > 0 &&
+                question.options.length === 4 &&
+                question.options.every((option) => option.length > 0)
+            )
+        : [];
+
+      if (cleanQuestions.length === 0) {
+        throw new Error("No quick check questions were generated.");
+      }
+
+      setSkimQuizQuestions(cleanQuestions);
+    } catch (error: any) {
+      console.warn("Skim-Sync quick check failed:", error?.message || error);
+      setSkimQuizError(
+        error?.message || "Could not generate a quick check for this summary."
+      );
+    } finally {
+      setIsSkimQuizLoading(false);
+    }
+  };
+
+  const handleSkimQuizAnswer = (questionId: string, optionIndex: number) => {
+    if (isSkimQuizSubmitted) return;
+
+    setSkimQuizAnswers((prev) => ({
+      ...prev,
+      [questionId]: optionIndex,
+    }));
+  };
+
+  const handleSubmitSkimQuiz = () => {
+    if (skimQuizAnsweredCount < skimQuizQuestions.length) return;
+    setIsSkimQuizSubmitted(true);
+  };
+
+  const handleRetakeSkimQuiz = () => {
+    setSkimQuizAnswers({});
+    setIsSkimQuizSubmitted(false);
+  };
+
+  const handleDismissSkimQuiz = () => {
+    setIsSkimQuizDismissed(true);
+  };
+
   const handlePause = () => {
     if (!isPlaying) return;
 
@@ -1863,6 +2015,7 @@ function SkimSyncView({
       stopFallbackTimer();
       setIsPlaying(false);
       setCurrentCharIndex(aiScript.length);
+      generateSkimQuiz();
     };
 
     utterance.onerror = (event) => {
@@ -2357,6 +2510,195 @@ function SkimSyncView({
           </div>
         </section>
       </div>
+
+      <AnimatePresence>
+        {!isSkimQuizDismissed &&
+          (isSkimQuizLoading || skimQuizError || skimQuizQuestions.length > 0) && (
+            <motion.section
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 18 }}
+              className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6"
+            >
+              <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-[#5A22C3]/10 bg-[#F3E8FF] px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#5A22C3]">
+                    <BrainCircuit size={14} />
+                    Optional Quick Check
+                  </div>
+
+                  <h2 className="text-xl font-bold tracking-tight text-gray-900">
+                    Want to test what you just heard?
+                  </h2>
+
+                  <p className="mt-1 text-sm leading-relaxed text-gray-500">
+                    Answer 1–3 questions based on this Skim-Sync summary, or ignore this and continue reviewing.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleDismissSkimQuiz}
+                  className="w-fit rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                >
+                  Ignore
+                </button>
+              </div>
+
+              {isSkimQuizLoading ? (
+                <div className="flex min-h-[160px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#5A22C3]/20 bg-[#F3E8FF]/20 p-6 text-center">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 2,
+                      ease: "linear",
+                    }}
+                  >
+                    <BrainCircuit size={34} className="mb-4 text-[#5A22C3]/50" />
+                  </motion.div>
+
+                  <p className="text-sm font-medium text-gray-700">
+                    Creating your optional quick check...
+                  </p>
+                </div>
+              ) : skimQuizError ? (
+                <div className="rounded-2xl border border-red-100 bg-red-50 p-5">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle size={20} className="mt-0.5 shrink-0 text-red-500" />
+
+                    <div>
+                      <p className="text-sm font-semibold text-red-700">
+                        Quick check unavailable
+                      </p>
+
+                      <p className="mt-1 text-sm leading-relaxed text-red-600">
+                        {skimQuizError}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm font-medium text-gray-700">
+                      {skimQuizAnsweredCount} of {skimQuizQuestions.length} answered
+                    </p>
+
+                    {isSkimQuizSubmitted ? (
+                      <div className="rounded-xl bg-[#F3E8FF] px-4 py-2 text-sm font-semibold text-[#5A22C3]">
+                        Score: {skimQuizScore}/{skimQuizQuestions.length}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleSubmitSkimQuiz}
+                        disabled={skimQuizAnsweredCount < skimQuizQuestions.length}
+                        className="rounded-lg bg-[#5A22C3] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#4a1ca3] disabled:cursor-not-allowed disabled:bg-gray-300"
+                      >
+                        Check Answers
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    {skimQuizQuestions.map((question, questionIndex) => {
+                      const selectedAnswer = skimQuizAnswers[question.id];
+                      const isAnswered = selectedAnswer !== undefined;
+
+                      return (
+                        <div
+                          key={question.id}
+                          className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5"
+                        >
+                          <div className="mb-4 flex items-start gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F3E8FF] text-sm font-bold text-[#5A22C3]">
+                              {questionIndex + 1}
+                            </div>
+
+                            <div className="min-w-0">
+                              <h3 className="text-sm font-semibold leading-relaxed text-gray-900 sm:text-base">
+                                {question.question}
+                              </h3>
+
+                              {question.sourceFile && (
+                                <p className="mt-1 text-xs text-gray-400">
+                                  Source: {question.sourceFile}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-2">
+                            {question.options.map((option, optionIndex) => {
+                              const isSelected = isAnswered && selectedAnswer === optionIndex;
+                              const isCorrect = optionIndex === question.correctAnswerIndex;
+                              const isWrongSelected = isSkimQuizSubmitted && isSelected && !isCorrect;
+
+                              return (
+                                <button
+                                  key={`${question.id}-${optionIndex}`}
+                                  onClick={() => handleSkimQuizAnswer(question.id, optionIndex)}
+                                  disabled={isSkimQuizSubmitted}
+                                  className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left text-sm leading-relaxed transition-colors ${
+                                    isSkimQuizSubmitted && isCorrect
+                                      ? "border-green-200 bg-green-50 text-green-800"
+                                      : isWrongSelected
+                                      ? "border-red-200 bg-red-50 text-red-700"
+                                      : isSelected
+                                      ? "border-[#5A22C3] bg-[#F3E8FF] text-[#5A22C3]"
+                                      : "border-gray-200 bg-white text-gray-700 hover:border-[#5A22C3]/30 hover:bg-[#F3E8FF]/30"
+                                  }`}
+                                >
+                                  <span
+                                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${
+                                      isSkimQuizSubmitted && isCorrect
+                                        ? "border-green-500 bg-green-500 text-white"
+                                        : isWrongSelected
+                                        ? "border-red-500 bg-red-500 text-white"
+                                        : isSelected
+                                        ? "border-[#5A22C3] bg-[#5A22C3] text-white"
+                                        : "border-gray-300 text-gray-400"
+                                    }`}
+                                  >
+                                    {String.fromCharCode(65 + optionIndex)}
+                                  </span>
+
+                                  <span>{option}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {isSkimQuizSubmitted && (
+                            <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-4">
+                              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                Explanation
+                              </p>
+
+                              <p className="mt-1 text-sm leading-relaxed text-gray-600">
+                                {question.explanation || "Review this part of the uploaded material again."}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {isSkimQuizSubmitted && (
+                    <div className="mt-5 flex justify-end">
+                      <button
+                        onClick={handleRetakeSkimQuiz}
+                        className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-[#5A22C3]"
+                      >
+                        Retake Quick Check
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </motion.section>
+          )}
+      </AnimatePresence>
 
       <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-[400px] -translate-x-1/2 sm:bottom-6">
         <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-xl">
