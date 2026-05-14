@@ -7,13 +7,13 @@ import BackToTop from './components/BackToTop';
 
 // --- TEAM DATA ---
 const TEAM_MEMBERS = [
-  { id: 1, name: "Jahmelle Dorias", role: "Backend Developer", img: "/images/team/Jahmell.jpg" },
-  { id: 2, name: "Mary Garganera", role: "UI/UX Developer", img: "/images/team/Mary.jpg" },
-  { id: 3, name: "Jude Garingalo", role: "Full Stack Developer", img: "/images/team/Jude.jpg" },
-  { id: 4, name: "Kristine Ignas", role: "UI/UX Developer", img: "/images/team/Kristine.jpg" },
-  { id: 5, name: "Gabrielle Madarang", role: "Graphic Designer", img: "/images/team/Gab.jpg" },
-  { id: 6, name: "Andrea Malicdem", role: "UI/UX Developer", img: "/images/team/Sai.jpg" },
-  { id: 7, name: "Trisha Mostoles", role: "UI/UX Developer", img: "/images/team/Trisha.jpg" },
+  { id: 1, name: "Jahmelle Dorias", role: "Backend Developer", img: "/images/team/jahmell.jpg" },
+  { id: 2, name: "Mary Garganera", role: "UI/UX Developer", img: "/images/team/mary.jpg" },
+  { id: 3, name: "Jude Garingalo", role: "Full Stack Developer", img: "/images/team/jude.jpg" },
+  { id: 4, name: "Kristine Ignas", role: "UI/UX Developer", img: "/images/team/kristine.jpg" },
+  { id: 5, name: "Gabrielle Madarang", role: "Graphic Designer", img: "/images/team/gab.jpg" },
+  { id: 6, name: "Andrea Malicdem", role: "UI/UX Developer", img: "/images/team/sai.jpg" },
+  { id: 7, name: "Trisha Mostoles", role: "UI/UX Developer", img: "/images/team/trisha.jpg" },
 ];
 
 // Animation presets
