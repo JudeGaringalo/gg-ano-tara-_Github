@@ -876,6 +876,17 @@ export default function Dashboard() {
                     </div>
 
                     <button
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                        router.push("/profile");
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 hover:text-[#5A22C3]"
+                    >
+                      <CheckCircle2 size={16} />
+                      View Profile
+                    </button>
+
+                    <button
                       onClick={handleLogout}
                       className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 transition-colors hover:bg-gray-50"
                     >
