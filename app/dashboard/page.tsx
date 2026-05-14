@@ -54,7 +54,10 @@ type LongDocumentWarning = {
   }[];
 };
 
-const BRAND_PURPLE = "#5A22C3";
+type RejectedUpload = {
+  fileName: string;
+  reason: string;
+};
 
 const ACCEPTED_UPLOAD_TYPES =
   ".pdf,.docx,.xlsx,.xls,.txt,image/jpeg,image/jpg,image/png,image/webp";
@@ -108,6 +111,7 @@ export default function Dashboard() {
 
   const [session, setSession] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
+
   const [isUploading, setIsUploading] = useState(false);
   const [isCheckingLength, setIsCheckingLength] = useState(false);
 
@@ -120,10 +124,9 @@ export default function Dashboard() {
     type: "success" | "info";
   } | null>(null);
 
-  const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
-  const [selectedLoads, setSelectedLoads] = useState<string[]>([]);
+  const [selectedFormats] = useState<string[]>([]);
+  const [selectedLoads] = useState<string[]>([]);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
 
   const [examSelectedFiles, setExamSelectedFiles] = useState<StudyFile[]>([]);
   const [examUploadedFiles, setExamUploadedFiles] = useState<StudyFile[]>([]);
@@ -134,8 +137,17 @@ export default function Dashboard() {
   const [recentlyUploaded, setRecentlyUploaded] = useState<StudyFile[]>([]);
 
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+
   const [longDocumentWarning, setLongDocumentWarning] =
     useState<LongDocumentWarning | null>(null);
+
+  const [rejectedUpload, setRejectedUpload] =
+    useState<RejectedUpload | null>(null);
+
+  const hardRefreshDashboard = () => {
+    window.speechSynthesis.cancel();
+    window.location.reload();
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -201,6 +213,104 @@ export default function Dashboard() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const deleteStoredFile = async (file: StudyFile) => {
+    try {
+      const {
+        data: { session: activeSession },
+      } = await supabase.auth.getSession();
+
+      if (!activeSession?.access_token) {
+        throw new Error("Missing active session.");
+      }
+
+      const res = await fetch("/api/delete-file", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${activeSession.access_token}`,
+        },
+        body: JSON.stringify({
+          fileId: file.id,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to delete rejected file.");
+      }
+
+      setFiles((prev) => prev.filter((item) => item.id !== file.id));
+      setRecentlyUploaded((prev) =>
+        prev.filter((item) => item.id !== file.id)
+      );
+      setExamSelectedFiles((prev) =>
+        prev.filter((item: StudyFile) => item.id !== file.id)
+      );
+      setExamUploadedFiles((prev) =>
+        prev.filter((item: StudyFile) => item.id !== file.id)
+      );
+      setSkimSyncFiles((prev) => prev.filter((item) => item.id !== file.id));
+    } catch (error) {
+      console.error("Delete rejected file failed:", error);
+    }
+  };
+
+  const validateImageFile = async (file: StudyFile) => {
+    if (!file.filePath) {
+      return {
+        accepted: false,
+        reason:
+          "This image could not be validated because the file path is missing.",
+      };
+    }
+
+    try {
+      const res = await fetch("/api/process-document", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          filePath: file.filePath,
+          fileType: file.format,
+          validateOnly: true,
+        }),
+      });
+
+      if (!res.ok) {
+        return {
+          accepted: false,
+          reason:
+            "This image could not be validated. Please upload a clearer study document.",
+        };
+      }
+
+      const data = await res.json();
+
+      if (data.accepted === false || data.rejected === true) {
+        return {
+          accepted: false,
+          reason:
+            data.rejectionReason ||
+            "This image does not appear to be study material. Please upload notes, slides, textbook pages, worksheets, diagrams, or documents instead.",
+        };
+      }
+
+      return {
+        accepted: true,
+        reason: "",
+      };
+    } catch (error) {
+      console.error("Image validation failed:", error);
+
+      return {
+        accepted: false,
+        reason:
+          "This image could not be validated. Please upload notes, slides, textbook pages, worksheets, diagrams, or documents instead.",
+      };
+    }
+  };
+
   const handleUploadFiles = async (
     incomingFiles: FileList | File[],
     source: "browse" | "camera" = "browse"
@@ -213,8 +323,8 @@ export default function Dashboard() {
 
     showToast(
       source === "camera"
-        ? "Uploading captured image..."
-        : `Uploading ${uploadedFilesRaw.length} file(s) to Supabase...`,
+        ? "Checking captured image..."
+        : `Checking ${uploadedFilesRaw.length} file(s)...`,
       "info"
     );
 
@@ -260,17 +370,36 @@ export default function Dashboard() {
           filePath,
         };
 
+        if (isImageFile(newFile)) {
+          const validation = await validateImageFile(newFile);
+
+          if (!validation.accepted) {
+            await deleteStoredFile(newFile);
+
+            setRejectedUpload({
+              fileName: newFile.name,
+              reason: validation.reason,
+            });
+
+            continue;
+          }
+        }
+
         newUploads.push(newFile);
       }
 
-      setFiles((prev) => [...newUploads, ...prev]);
-      setRecentlyUploaded(newUploads);
+      if (newUploads.length > 0) {
+        setFiles((prev) => [...newUploads, ...prev]);
+        setRecentlyUploaded(newUploads);
 
-      showToast(
-        source === "camera"
-          ? "Image captured and uploaded."
-          : "Upload complete."
-      );
+        showToast(
+          source === "camera"
+            ? "Image captured and uploaded."
+            : "Upload complete."
+        );
+      } else {
+        showToast("No valid study documents were uploaded.", "info");
+      }
     } catch (err) {
       console.error(err);
       showToast("Upload failed", "info");
@@ -318,9 +447,28 @@ export default function Dashboard() {
         wordCount: number;
       }[] = [];
 
+      const validFiles: StudyFile[] = [];
+
       for (const file of targetFiles) {
         if (!file.filePath) continue;
-        if (isImageFile(file)) continue;
+
+        if (isImageFile(file)) {
+          const validation = await validateImageFile(file);
+
+          if (!validation.accepted) {
+            await deleteStoredFile(file);
+
+            setRejectedUpload({
+              fileName: file.name,
+              reason: validation.reason,
+            });
+
+            continue;
+          }
+
+          validFiles.push(file);
+          continue;
+        }
 
         const res = await fetch("/api/process-document", {
           method: "POST",
@@ -336,10 +484,26 @@ export default function Dashboard() {
 
         if (!res.ok) {
           console.error("Could not check document length:", file.name);
+          validFiles.push(file);
           continue;
         }
 
         const data = await res.json();
+
+        if (data.accepted === false || data.rejected === true) {
+          await deleteStoredFile(file);
+
+          setRejectedUpload({
+            fileName: file.name,
+            reason:
+              data.rejectionReason ||
+              "This file does not appear to be valid study material.",
+          });
+
+          continue;
+        }
+
+        validFiles.push(file);
 
         if (typeof data.wordCount === "number") {
           totalWordCount += data.wordCount;
@@ -353,9 +517,14 @@ export default function Dashboard() {
         }
       }
 
+      if (validFiles.length === 0) {
+        showToast("No valid study documents were selected.", "info");
+        return;
+      }
+
       if (totalWordCount > 500 || longFiles.length > 0) {
         setLongDocumentWarning({
-          files: targetFiles,
+          files: validFiles,
           totalWordCount,
           longFiles,
         });
@@ -363,7 +532,7 @@ export default function Dashboard() {
         return;
       }
 
-      startSkimSyncNow(targetFiles);
+      startSkimSyncNow(validFiles);
     } catch (error) {
       console.error("Length check failed:", error);
       startSkimSyncNow(targetFiles);
@@ -413,7 +582,7 @@ export default function Dashboard() {
           * { -ms-overflow-style: none; scrollbar-width: none; }
         `}</style>
 
-        <div className="min-h-screen bg-white font-sans text-gray-900 relative overflow-hidden">
+        <div className="relative min-h-screen overflow-hidden bg-white font-sans text-gray-900">
           <nav className="sticky top-0 z-40 flex items-center justify-between gap-4 border-b border-gray-100 bg-white px-4 py-4 sm:px-6 md:px-12 md:py-5">
             <div className="flex min-w-0 items-center gap-4 sm:gap-6">
               <div className="flex w-20 shrink-0 items-center md:w-24">
@@ -431,7 +600,7 @@ export default function Dashboard() {
               <div className="hidden h-4 w-px bg-gray-200 sm:block" />
 
               <button
-                onClick={() => setActiveTab("home")}
+                onClick={hardRefreshDashboard}
                 className="flex items-center gap-2 truncate text-sm font-medium text-gray-500 transition-colors hover:text-gray-900"
               >
                 <Home size={16} />
@@ -448,10 +617,7 @@ export default function Dashboard() {
           </nav>
 
           <main className="relative px-4 py-6 sm:px-6 md:p-8 lg:p-12">
-            <SkimSyncView
-              files={skimSyncFiles}
-              onBack={() => setActiveTab("home")}
-            />
+            <SkimSyncView files={skimSyncFiles} onBack={hardRefreshDashboard} />
           </main>
         </div>
       </ReactLenis>
@@ -491,6 +657,16 @@ export default function Dashboard() {
               longFiles={longDocumentWarning.longFiles}
               onCancel={handleCancelLongDocument}
               onProceed={handleConfirmLongDocument}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {rejectedUpload && (
+            <RejectedUploadModal
+              fileName={rejectedUpload.fileName}
+              reason={rejectedUpload.reason}
+              onClose={() => setRejectedUpload(null)}
             />
           )}
         </AnimatePresence>
@@ -688,12 +864,6 @@ export default function Dashboard() {
                     files={filteredFiles}
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
-                    selectedFormats={selectedFormats}
-                    setSelectedFormats={setSelectedFormats}
-                    selectedLoads={selectedLoads}
-                    setSelectedLoads={setSelectedLoads}
-                    showFilters={showFilters}
-                    setShowFilters={setShowFilters}
                     onStartSkimSync={handleStartSkimSync}
                     isCheckingLength={isCheckingLength}
                   />
@@ -992,7 +1162,7 @@ function CameraCaptureModal({
               className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#5A22C3] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#4a1ca3] disabled:bg-gray-300 sm:flex-none"
             >
               <Camera size={16} />
-              {isCapturing ? "Capturing..." : "Capture Image"}
+              {isCapturing ? "Checking..." : "Capture Image"}
             </button>
           </div>
         </div>
@@ -1101,6 +1271,68 @@ function LongDocumentWarningModal({
   );
 }
 
+function RejectedUploadModal({
+  fileName,
+  reason,
+  onClose,
+}: {
+  fileName: string;
+  reason: string;
+  onClose: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 py-6 backdrop-blur-sm"
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 18, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 18, scale: 0.96 }}
+        className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl sm:p-6"
+      >
+        <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500">
+          <AlertTriangle size={22} />
+        </div>
+
+        <h2 className="mb-2 text-xl font-semibold tracking-tight text-gray-900">
+          Only study documents are accepted
+        </h2>
+
+        <p className="text-sm leading-relaxed text-gray-500">
+          {reason ||
+            "This image does not appear to be study material. Please upload notes, slides, textbook pages, worksheets, diagrams, whiteboard content, or documents instead."}
+        </p>
+
+        <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+            Removed file
+          </p>
+
+          <p className="mt-1 truncate text-sm font-medium text-gray-800">
+            {fileName}
+          </p>
+
+          <p className="mt-1 text-xs text-gray-500">
+            This file was removed from your vault.
+          </p>
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <button
+            onClick={onClose}
+            className="rounded-lg bg-[#5A22C3] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#4a1ca3]"
+          >
+            Got it
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function SkimSyncView({
   files,
   onBack,
@@ -1117,16 +1349,39 @@ function SkimSyncView({
   const lyricsScrollRef = useRef<HTMLDivElement | null>(null);
   const activeLineRef = useRef<HTMLDivElement | null>(null);
 
+  const fallbackTimerRef = useRef<number | null>(null);
+  const speechStartedAtRef = useRef<number>(0);
+  const pausedAtRef = useRef<number | null>(null);
+  const totalPausedTimeRef = useRef<number>(0);
+  const boundaryHasWorkedRef = useRef(false);
+
   const displayTitle =
     files.length > 1
       ? `Combined Skim-Sync (${files.length} Files)`
       : files[0]?.name;
 
+  const stopFallbackTimer = () => {
+    if (fallbackTimerRef.current !== null) {
+      window.clearInterval(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+  };
+
+  const resetSpeechTracking = () => {
+    stopFallbackTimer();
+    speechStartedAtRef.current = 0;
+    pausedAtRef.current = null;
+    totalPausedTimeRef.current = 0;
+    boundaryHasWorkedRef.current = false;
+    setCurrentCharIndex(0);
+  };
+
   useEffect(() => {
     const fetchScript = async () => {
       try {
         setIsLoading(true);
-        setCurrentCharIndex(0);
+        setIsPlaying(false);
+        resetSpeechTracking();
         window.speechSynthesis.cancel();
 
         let combinedScript = "";
@@ -1154,6 +1409,12 @@ function SkimSyncView({
           }
 
           const data = await res.json();
+
+          if (data.accepted === false || data.rejected === true) {
+            combinedScript += `I could not process ${file.name} because it is not valid study material. `;
+            continue;
+          }
+
           combinedScript += `${data.script || ""} `;
         }
 
@@ -1171,10 +1432,16 @@ function SkimSyncView({
     } else {
       setIsLoading(false);
     }
+
+    return () => {
+      stopFallbackTimer();
+      window.speechSynthesis.cancel();
+    };
   }, [files]);
 
   useEffect(() => {
     return () => {
+      stopFallbackTimer();
       window.speechSynthesis.cancel();
     };
   }, []);
@@ -1221,11 +1488,19 @@ function SkimSyncView({
   const activeLineIndex = Math.floor(currentWordIndex / 4);
 
   useEffect(() => {
-    if (!activeLineRef.current || !lyricsScrollRef.current) return;
+    const container = lyricsScrollRef.current;
+    const activeLine = activeLineRef.current;
 
-    activeLineRef.current.scrollIntoView({
+    if (!container || !activeLine) return;
+
+    const targetTop =
+      activeLine.offsetTop -
+      container.clientHeight / 2 +
+      activeLine.clientHeight / 2;
+
+    container.scrollTo({
+      top: Math.max(0, targetTop),
       behavior: "smooth",
-      block: "center",
     });
   }, [activeLineIndex]);
 
@@ -1237,58 +1512,150 @@ function SkimSyncView({
         )
       : 0;
 
+  const startFallbackTimer = () => {
+    stopFallbackTimer();
+
+    if (!lyricWords.length || !aiScript) return;
+
+    speechStartedAtRef.current = Date.now();
+    pausedAtRef.current = null;
+    totalPausedTimeRef.current = 0;
+
+    const estimatedWordsPerMinute = 150;
+    const estimatedWordsPerSecond = estimatedWordsPerMinute / 60;
+
+    fallbackTimerRef.current = window.setInterval(() => {
+      if (!window.speechSynthesis.speaking || window.speechSynthesis.paused) {
+        return;
+      }
+
+      const elapsedSeconds =
+        (Date.now() -
+          speechStartedAtRef.current -
+          totalPausedTimeRef.current) /
+        1000;
+
+      const estimatedWordIndex = Math.min(
+        lyricWords.length - 1,
+        Math.floor(elapsedSeconds * estimatedWordsPerSecond)
+      );
+
+      const estimatedWord = lyricWords[estimatedWordIndex];
+
+      if (!estimatedWord) return;
+
+      if (!boundaryHasWorkedRef.current) {
+        setCurrentCharIndex(estimatedWord.start);
+      }
+    }, 250);
+  };
+
+  const handlePause = () => {
+    if (!isPlaying) return;
+
+    pausedAtRef.current = Date.now();
+    window.speechSynthesis.pause();
+    setIsPlaying(false);
+  };
+
+  const handleResume = () => {
+    if (pausedAtRef.current) {
+      totalPausedTimeRef.current += Date.now() - pausedAtRef.current;
+      pausedAtRef.current = null;
+    }
+
+    window.speechSynthesis.resume();
+    setIsPlaying(true);
+  };
+
+  const handleFreshPlay = () => {
+    window.speechSynthesis.cancel();
+    resetSpeechTracking();
+
+    const utterance = new SpeechSynthesisUtterance(aiScript);
+
+    utterance.rate = 1;
+    utterance.pitch = 1;
+
+    utterance.onstart = () => {
+      setIsPlaying(true);
+      startFallbackTimer();
+    };
+
+    utterance.onboundary = (event) => {
+      if (typeof event.charIndex === "number" && event.charIndex >= 0) {
+        boundaryHasWorkedRef.current = true;
+        setCurrentCharIndex(event.charIndex);
+      }
+    };
+
+    utterance.onpause = () => {
+      if (!pausedAtRef.current) {
+        pausedAtRef.current = Date.now();
+      }
+
+      setIsPlaying(false);
+    };
+
+    utterance.onresume = () => {
+      if (pausedAtRef.current) {
+        totalPausedTimeRef.current += Date.now() - pausedAtRef.current;
+        pausedAtRef.current = null;
+      }
+
+      setIsPlaying(true);
+    };
+
+    utterance.onend = () => {
+      stopFallbackTimer();
+      setIsPlaying(false);
+      setCurrentCharIndex(aiScript.length);
+    };
+
+    utterance.onerror = (event) => {
+      console.error("Speech synthesis error:", event);
+      stopFallbackTimer();
+      setIsPlaying(false);
+    };
+
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  };
+
   const togglePlay = () => {
     if (!aiScript || isLoading) return;
 
     if (isPlaying) {
-      window.speechSynthesis.pause();
-      setIsPlaying(false);
+      handlePause();
       return;
     }
 
     if (window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
-    } else {
-      window.speechSynthesis.cancel();
-      setCurrentCharIndex(0);
-
-      utteranceRef.current = new SpeechSynthesisUtterance(aiScript);
-
-      utteranceRef.current.onboundary = (event) => {
-        if (event.name === "word") {
-          setCurrentCharIndex(event.charIndex);
-        }
-      };
-
-      utteranceRef.current.onend = () => {
-        setIsPlaying(false);
-        setCurrentCharIndex(aiScript.length);
-      };
-
-      window.speechSynthesis.speak(utteranceRef.current);
+      handleResume();
+      return;
     }
 
-    setIsPlaying(true);
+    handleFreshPlay();
   };
 
   return (
     <div className="relative mx-auto max-w-[1180px] pb-28 sm:pb-32">
-      <header className="mb-6 flex flex-col gap-5 lg:mb-8 lg:flex-row lg:items-end lg:justify-between">
+      <header className="mb-5 flex flex-col gap-4 lg:mb-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-3xl">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-500"
+            className="mb-3 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-500"
           >
             <AudioLines size={14} className="text-[#5A22C3]" />
             Lyric Summary Mode
           </motion.div>
 
-          <h1 className="break-words text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl lg:text-5xl">
+          <h1 className="break-words text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl lg:text-4xl">
             {displayTitle}
           </h1>
 
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-gray-500">
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-500">
             Your summary appears in short spoken phrases while Echo reads it
             aloud.
           </p>
@@ -1302,11 +1669,11 @@ function SkimSyncView({
         </button>
       </header>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:gap-6">
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12 lg:gap-6">
         <section className="lg:col-span-4">
-          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:sticky lg:top-28 lg:p-6">
+          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:sticky lg:top-24">
             <div className="relative z-10 flex flex-col items-center text-center">
-              <div className="relative mb-6 mt-2 flex h-48 w-48 items-center justify-center sm:h-60 sm:w-60 lg:h-64 lg:w-64">
+              <div className="relative mb-5 mt-1 flex h-40 w-40 items-center justify-center sm:h-52 sm:w-52 lg:h-56 lg:w-56">
                 <motion.div
                   animate={isPlaying ? { rotate: 360 } : { rotate: 0 }}
                   transition={{
@@ -1314,7 +1681,7 @@ function SkimSyncView({
                     repeat: Infinity,
                     ease: "linear",
                   }}
-                  className="absolute h-44 w-44 rounded-full border border-dashed border-[#5A22C3]/30 sm:h-56 sm:w-56"
+                  className="absolute h-36 w-36 rounded-full border border-dashed border-[#5A22C3]/30 sm:h-48 sm:w-48 lg:h-52 lg:w-52"
                 />
 
                 <motion.div
@@ -1324,10 +1691,10 @@ function SkimSyncView({
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
-                  className="absolute h-48 w-48 rounded-full border border-[#5A22C3]/10 sm:h-64 sm:w-64"
+                  className="absolute h-40 w-40 rounded-full border border-[#5A22C3]/10 sm:h-52 sm:w-52 lg:h-56 lg:w-56"
                 />
 
-                <div className="absolute h-40 w-40 rounded-full bg-white sm:h-[214px] sm:w-[214px]" />
+                <div className="absolute h-32 w-32 rounded-full bg-white sm:h-40 sm:w-40 lg:h-44 lg:w-44" />
 
                 <motion.div
                   animate={
@@ -1338,7 +1705,7 @@ function SkimSyncView({
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
-                  className="relative flex h-32 w-32 items-center justify-center rounded-full border border-[#5A22C3]/20 bg-[#F3E8FF]/50 sm:h-44 sm:w-44"
+                  className="relative flex h-28 w-28 items-center justify-center rounded-full border border-[#5A22C3]/20 bg-[#F3E8FF]/50 sm:h-36 sm:w-36 lg:h-40 lg:w-40"
                 />
 
                 <motion.div
@@ -1352,13 +1719,13 @@ function SkimSyncView({
                 />
 
                 <Mic2
-                  className={`absolute z-10 h-10 w-10 transition-colors sm:h-12 sm:w-12 ${
+                  className={`absolute z-10 h-9 w-9 transition-colors sm:h-11 sm:w-11 ${
                     isPlaying ? "text-[#5A22C3]" : "text-gray-400"
                   }`}
                 />
               </div>
 
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-700">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-700">
                 <span
                   className={`h-2 w-2 rounded-full ${
                     isPlaying ? "animate-pulse bg-green-500" : "bg-gray-400"
@@ -1368,7 +1735,7 @@ function SkimSyncView({
                 {isLoading ? "Preparing" : isPlaying ? "Speaking" : "Ready"}
               </div>
 
-              <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">
+              <h2 className="text-lg font-semibold text-gray-900">
                 {isPlaying ? "Echo is live" : "Press play to start"}
               </h2>
 
@@ -1380,23 +1747,23 @@ function SkimSyncView({
                   : "AI voice summary loaded from your document"}
               </p>
 
-              <div className="mt-6 grid w-full grid-cols-2 gap-3 sm:mt-8">
-                <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-left">
+              <div className="mt-5 grid w-full grid-cols-2 gap-3">
+                <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-left">
                   <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#5A22C3]">
                     Words
                   </p>
 
-                  <p className="text-xl font-bold text-gray-900">
+                  <p className="text-lg font-bold text-gray-900">
                     {lyricWords.length}
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-left">
+                <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-left">
                   <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#5A22C3]">
                     Progress
                   </p>
 
-                  <p className="text-xl font-bold text-gray-900">{progress}%</p>
+                  <p className="text-lg font-bold text-gray-900">{progress}%</p>
                 </div>
               </div>
             </div>
@@ -1404,9 +1771,9 @@ function SkimSyncView({
         </section>
 
         <section className="lg:col-span-8">
-          <div className="relative min-h-[520px] overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:min-h-[620px] sm:p-8 lg:p-10">
+          <div className="relative flex min-h-[430px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:min-h-[468px]">
             {isLoading ? (
-              <div className="relative z-10 flex min-h-[460px] flex-col items-center justify-center text-center text-gray-400 sm:min-h-[540px]">
+              <div className="flex min-h-[390px] flex-1 flex-col items-center justify-center text-center text-gray-400">
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{
@@ -1427,8 +1794,8 @@ function SkimSyncView({
                 </p>
               </div>
             ) : (
-              <div className="relative z-10 flex min-h-[480px] flex-col justify-between sm:min-h-[540px]">
-                <div className="flex items-center justify-between gap-4">
+              <>
+                <div className="flex shrink-0 items-center justify-between gap-4 pb-4">
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#5A22C3]/20 bg-[#F3E8FF] text-[#5A22C3]">
                       <Wand2 size={18} />
@@ -1451,81 +1818,90 @@ function SkimSyncView({
                   </div>
                 </div>
 
-                <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center py-4 text-center sm:py-8">
+                <div className="h-[280px] overflow-hidden rounded-2xl border border-[#5A22C3]/5 bg-[#F3E8FF]/10 sm:h-[300px] lg:h-[302px]">
                   <div
                     ref={lyricsScrollRef}
-                    className="relative h-[360px] w-full overflow-y-auto scroll-smooth px-1 py-24 sm:h-[460px] sm:px-4 sm:py-28"
+                    className="h-full w-full overflow-y-auto px-2 py-10 text-center sm:px-4 sm:py-12"
+                    style={{
+                      WebkitOverflowScrolling: "touch",
+                    }}
                   >
-                    <div className="flex flex-col gap-4 sm:gap-6">
-                      {lyricLines.map((line, lineIndex) => {
-                        const isActiveLine = lineIndex === activeLineIndex;
-                        const isPastLine = lineIndex < activeLineIndex;
+                    <div className="flex flex-col gap-4 sm:gap-5">
+                      {lyricLines.length > 0 ? (
+                        lyricLines.map((line, lineIndex) => {
+                          const isActiveLine = lineIndex === activeLineIndex;
+                          const isPastLine = lineIndex < activeLineIndex;
 
-                        return (
-                          <motion.div
-                            key={lineIndex}
-                            ref={isActiveLine ? activeLineRef : undefined}
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{
-                              opacity: isActiveLine
-                                ? 1
-                                : isPastLine
-                                ? 0.28
-                                : 0.18,
-                              y: 0,
-                              scale: isActiveLine ? 1 : 0.96,
-                            }}
-                            transition={{
-                              duration: 0.25,
-                              ease: "easeOut",
-                            }}
-                            className={`rounded-2xl px-3 py-4 transition-colors sm:px-6 sm:py-5 ${
-                              isActiveLine
-                                ? "border border-[#5A22C3]/10 bg-[#F3E8FF]/30"
-                                : "border border-transparent"
-                            }`}
-                          >
-                            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 sm:gap-x-3 sm:gap-y-2">
-                              {line.map((word) => {
-                                const hasBeenSpoken =
-                                  word.id <= currentWordIndex;
-                                const isCurrent =
-                                  word.id === currentWordIndex;
+                          return (
+                            <motion.div
+                              key={lineIndex}
+                              ref={isActiveLine ? activeLineRef : undefined}
+                              initial={{ opacity: 0, y: 12 }}
+                              animate={{
+                                opacity: isActiveLine
+                                  ? 1
+                                  : isPastLine
+                                  ? 0.28
+                                  : 0.18,
+                                y: 0,
+                                scale: isActiveLine ? 1 : 0.96,
+                              }}
+                              transition={{
+                                duration: 0.25,
+                                ease: "easeOut",
+                              }}
+                              className={`rounded-2xl px-3 py-4 transition-colors sm:px-6 sm:py-5 ${
+                                isActiveLine
+                                  ? "border border-[#5A22C3]/10 bg-white shadow-sm"
+                                  : "border border-transparent"
+                              }`}
+                            >
+                              <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 sm:gap-x-3 sm:gap-y-2">
+                                {line.map((word) => {
+                                  const hasBeenSpoken =
+                                    word.id <= currentWordIndex;
+                                  const isCurrent =
+                                    word.id === currentWordIndex;
 
-                                return (
-                                  <span
-                                    key={`${word.id}-${word.text}`}
-                                    className={`inline-block font-semibold leading-tight transition-colors ${
-                                      isActiveLine
-                                        ? "text-3xl sm:text-4xl lg:text-5xl"
-                                        : "text-xl sm:text-2xl"
-                                    } ${
-                                      isCurrent
-                                        ? "text-[#5A22C3]"
-                                        : hasBeenSpoken
-                                        ? "text-gray-800"
-                                        : "text-gray-400"
-                                    }`}
-                                  >
-                                    {word.text}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          </motion.div>
-                        );
-                      })}
+                                  return (
+                                    <span
+                                      key={`${word.id}-${word.text}`}
+                                      className={`inline-block font-semibold leading-tight transition-colors ${
+                                        isActiveLine
+                                          ? "text-2xl sm:text-4xl lg:text-5xl"
+                                          : "text-lg sm:text-2xl"
+                                      } ${
+                                        isCurrent
+                                          ? "text-[#5A22C3]"
+                                          : hasBeenSpoken
+                                          ? "text-gray-800"
+                                          : "text-gray-400"
+                                      }`}
+                                    >
+                                      {word.text}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            </motion.div>
+                          );
+                        })
+                      ) : (
+                        <div className="flex h-full items-center justify-center px-4 text-sm text-gray-500">
+                          No lyric summary was generated for this file.
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                <div>
+                <div className="shrink-0 pt-4">
                   <div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[#5A22C3]">
                     <span>Summary Flow</span>
                     <span>{progress}%</span>
                   </div>
 
-                  <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+                  <div className="h-2 overflow-hidden rounded-full bg-gray-100">
                     <motion.div
                       className="h-full rounded-full bg-[#5A22C3]"
                       initial={{ width: "0%" }}
@@ -1534,13 +1910,13 @@ function SkimSyncView({
                     />
                   </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </section>
       </div>
 
-      <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-[400px] -translate-x-1/2 sm:bottom-8">
+      <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-[400px] -translate-x-1/2 sm:bottom-6">
         <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-xl">
           <div className="flex items-center justify-center gap-4 sm:gap-6">
             <button
@@ -2021,13 +2397,13 @@ function HomeView({
           {isUploading
             ? "Uploading to secure vault..."
             : isCheckingLength
-            ? "Checking document length..."
+            ? "Checking document..."
             : "Add study material"}
         </h3>
 
         <p className="mb-5 max-w-md text-center text-sm text-gray-500">
           Upload PDFs, Docs, spreadsheets, text files, screenshots, or take a
-          photo of notes and let Echo summarize it.
+          photo of study material and let Echo summarize it.
         </p>
 
         <div className="flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row">
@@ -2051,8 +2427,8 @@ function HomeView({
         </div>
 
         <p className="mt-4 text-center text-[11px] text-gray-400">
-          Camera capture works on supported desktop browsers, phones, and
-          tablets.
+          Camera capture only accepts study documents, notes, slides,
+          whiteboards, worksheets, diagrams, and textbook pages.
         </p>
       </div>
 

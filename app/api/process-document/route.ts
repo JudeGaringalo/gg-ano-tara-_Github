@@ -22,13 +22,15 @@ const IMAGE_FORMATS = ["jpg", "jpeg", "png", "webp"];
 const LONG_DOCUMENT_WORD_LIMIT = 500;
 
 type ImageMode =
-  | "text_image"
-  | "mixed_image"
-  | "visual_image"
+  | "study_document_image"
+  | "study_mixed_image"
+  | "non_study_image"
   | "unclear_image";
 
 type ImageAnalysisResult = {
+  accepted?: boolean;
   imageMode?: ImageMode;
+  rejectionReason?: string;
   script?: string;
 };
 
@@ -72,15 +74,18 @@ function parseImageAnalysis(rawResponse: string): ImageAnalysisResult {
     const parsed = JSON.parse(cleanedResponse);
 
     return {
+      accepted: Boolean(parsed.accepted),
       imageMode: parsed.imageMode || "unclear_image",
+      rejectionReason: parsed.rejectionReason || "",
       script: parsed.script || "",
     };
   } catch {
     return {
+      accepted: false,
       imageMode: "unclear_image",
-      script:
-        rawResponse ||
-        "I can see the uploaded image, but I could not confidently generate a structured summary from it.",
+      rejectionReason:
+        "This image could not be confidently identified as study material.",
+      script: "",
     };
   }
 }
@@ -91,6 +96,7 @@ export async function POST(req: Request) {
       filePath,
       fileType,
       checkOnly = false,
+      validateOnly = false,
       skipLongDocumentCheck = false,
     } = await req.json();
 
@@ -115,19 +121,11 @@ export async function POST(req: Request) {
     /**
      * IMAGE PROCESSING
      *
-     * Images do not use the 500-word document warning.
-     * They are processed visually, whether they contain text or not.
+     * Images are accepted ONLY if they appear to be study material.
+     * Non-study photos such as pets, selfies, food, landscapes, rooms,
+     * products, or random objects are rejected.
      */
     if (isImageFormat(format)) {
-      if (checkOnly) {
-        return NextResponse.json({
-          requiresConfirmation: false,
-          wordCount: null,
-          limit: LONG_DOCUMENT_WORD_LIMIT,
-          fileType: "image",
-        });
-      }
-
       console.log("Creating signed image URL...");
 
       const { data: signedUrlData, error: signedUrlError } =
@@ -147,62 +145,86 @@ export async function POST(req: Request) {
         );
       }
 
-      console.log("Sending image to GROQ Vision...");
+      console.log("Validating image study relevance...");
 
-      const imageAnalysisPrompt = `
-You are an AI study assistant with vision ability.
+      const imageValidationPrompt = `
+You are an AI study-material validator and study assistant with vision ability.
 
-The user uploaded or captured an image. The image may be:
-1. A text-heavy image, such as notes, textbook pages, worksheets, slides, screenshots, or whiteboard writing.
-2. A mixed image, with both visible objects and some text.
-3. A non-text visual image, such as a person, object, scene, diagram, room, animal, product, artwork, or photo.
-4. An unclear or low-quality image.
+The user uploaded or captured an image. Your task is to decide whether the image should be accepted into a study app.
 
-Your first job is to silently classify the image.
+ACCEPT the image only if it clearly appears to be study-related or document-related, such as:
+- handwritten or typed notes
+- textbook pages
+- worksheets
+- exam reviewers
+- school modules
+- classroom slides
+- lecture screenshots
+- whiteboard writing
+- diagrams, charts, graphs, formulas, tables, or educational illustrations
+- screenshots of study content
+- documents with readable academic, work, research, or informational content
+
+REJECT the image if it is not useful as study material, such as:
+- pets or animals
+- selfies or portraits
+- people posing
+- food
+- random objects
+- bedrooms, rooms, houses, or scenery
+- product photos
+- memes
+- aesthetic photos
+- blank or nearly blank images
+- images with no visible study/document content
 
 VERY IMPORTANT:
-Do not respond with "there is no text on the image" as the main answer.
-Do not fail just because there is no readable text.
-If the image has no readable text, summarize what is visually present instead.
-If the image is not study material, still give a useful spoken summary of what the image appears to show.
-Do not invent details that are not visible.
-If something is unclear, say it is unclear naturally.
+Do not summarize non-study images.
+Do not describe a rejected image in detail.
+Do not say, "This image shows a dog" or summarize the dog.
+If the image is not study material, reject it politely and briefly.
+If the image is unclear and you cannot confidently identify study/document content, reject it.
 
 Return ONLY valid JSON in this exact format:
 {
-  "imageMode": "text_image" | "mixed_image" | "visual_image" | "unclear_image",
-  "script": "A clear, natural spoken summary optimized for text-to-speech. No markdown. No bullets. No headings."
+  "accepted": true | false,
+  "imageMode": "study_document_image" | "study_mixed_image" | "non_study_image" | "unclear_image",
+  "rejectionReason": "Short reason if rejected. Empty string if accepted.",
+  "script": "If accepted, provide a natural spoken study summary. If validateOnly is true or if rejected, use an empty string."
 }
 
-For text_image:
-Summarize the visible written content.
+If accepted:
+Create a clear, natural spoken summary optimized for text-to-speech.
+No markdown.
+No bullets.
+No headings.
+Keep it under 3 minutes of speaking time.
 
-For mixed_image:
-Summarize both the visible text and the important visual context.
-
-For visual_image:
-Describe and summarize the visible subject, scene, objects, and any meaningful context. Do not say the image has no text as the main response.
-
-For unclear_image:
-Say what can be confidently seen and mention that some details are unclear.
-
-Keep the script under 3 minutes of speaking time.
+If rejected:
+Set accepted to false.
+Set script to an empty string.
+Use a short rejectionReason, such as:
+"This image does not appear to be study material. Please upload notes, slides, textbook pages, worksheets, diagrams, or documents instead."
 `;
+
+      const userText = validateOnly || checkOnly
+        ? "Validate whether this image is acceptable study material. Do not summarize it yet."
+        : "Validate this image. If it is acceptable study material, summarize the study content. If it is not study material, reject it.";
 
       const chatCompletion = await groq.chat.completions.create({
         model: "meta-llama/llama-4-scout-17b-16e-instruct",
-        temperature: 0.3,
+        temperature: 0.2,
         messages: [
           {
             role: "system",
-            content: imageAnalysisPrompt,
+            content: imageValidationPrompt,
           },
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text: "Analyze this uploaded image. If it contains readable text, summarize it. If it does not contain readable text, summarize the visible image instead.",
+                text: userText,
               },
               {
                 type: "image_url",
@@ -220,11 +242,34 @@ Keep the script under 3 minutes of speaking time.
 
       const parsedImageResult = parseImageAnalysis(rawResponse);
 
+      if (!parsedImageResult.accepted) {
+        return NextResponse.json({
+          accepted: false,
+          rejected: true,
+          imageMode: parsedImageResult.imageMode || "non_study_image",
+          rejectionReason:
+            parsedImageResult.rejectionReason ||
+            "This image does not appear to be study material. Please upload notes, slides, textbook pages, worksheets, diagrams, or documents instead.",
+          script: "",
+        });
+      }
+
+      if (validateOnly || checkOnly) {
+        return NextResponse.json({
+          accepted: true,
+          rejected: false,
+          imageMode: parsedImageResult.imageMode || "study_document_image",
+          script: "",
+        });
+      }
+
       return NextResponse.json({
-        imageMode: parsedImageResult.imageMode || "unclear_image",
+        accepted: true,
+        rejected: false,
+        imageMode: parsedImageResult.imageMode || "study_document_image",
         script:
           parsedImageResult.script ||
-          "I can see the uploaded image, but I could not confidently generate a summary from it.",
+          "This image appears to contain study material, but I could not generate a clear summary from it.",
       });
     }
 
@@ -297,6 +342,8 @@ Keep the script under 3 minutes of speaking time.
 
     if (checkOnly) {
       return NextResponse.json({
+        accepted: true,
+        rejected: false,
         requiresConfirmation: isLongDocument,
         wordCount,
         limit: LONG_DOCUMENT_WORD_LIMIT,
@@ -306,6 +353,8 @@ Keep the script under 3 minutes of speaking time.
 
     if (isLongDocument && !skipLongDocumentCheck) {
       return NextResponse.json({
+        accepted: true,
+        rejected: false,
         requiresConfirmation: true,
         wordCount,
         limit: LONG_DOCUMENT_WORD_LIMIT,
@@ -335,6 +384,8 @@ Keep the script under 3 minutes of speaking time.
     });
 
     return NextResponse.json({
+      accepted: true,
+      rejected: false,
       requiresConfirmation: false,
       wordCount,
       limit: LONG_DOCUMENT_WORD_LIMIT,
