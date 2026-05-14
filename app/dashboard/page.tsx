@@ -1353,7 +1353,9 @@ function SkimSyncView({
   const speechStartedAtRef = useRef<number>(0);
   const pausedAtRef = useRef<number | null>(null);
   const totalPausedTimeRef = useRef<number>(0);
-  const boundaryHasWorkedRef = useRef(false);
+  const lastBoundaryAtRef = useRef<number>(0);
+  const trackerIsActiveRef = useRef(false);
+  const trackerIsPausedRef = useRef(false);
 
   const displayTitle =
     files.length > 1
@@ -1372,7 +1374,9 @@ function SkimSyncView({
     speechStartedAtRef.current = 0;
     pausedAtRef.current = null;
     totalPausedTimeRef.current = 0;
-    boundaryHasWorkedRef.current = false;
+    lastBoundaryAtRef.current = 0;
+    trackerIsActiveRef.current = false;
+    trackerIsPausedRef.current = false;
     setCurrentCharIndex(0);
   };
 
@@ -1487,22 +1491,14 @@ function SkimSyncView({
 
   const activeLineIndex = Math.floor(currentWordIndex / 4);
 
-  useEffect(() => {
-    const container = lyricsScrollRef.current;
-    const activeLine = activeLineRef.current;
+  const lyricLineHeight = 92;
+  const lyricViewportHeight = 302;
+  const lyricCenterOffset = lyricViewportHeight / 2 - lyricLineHeight / 2;
 
-    if (!container || !activeLine) return;
-
-    const targetTop =
-      activeLine.offsetTop -
-      container.clientHeight / 2 +
-      activeLine.clientHeight / 2;
-
-    container.scrollTo({
-      top: Math.max(0, targetTop),
-      behavior: "smooth",
-    });
-  }, [activeLineIndex]);
+  const lyricTrackY = Math.max(
+    lyricCenterOffset - activeLineIndex * lyricLineHeight,
+    lyricCenterOffset - Math.max(lyricLines.length - 1, 0) * lyricLineHeight
+  );
 
   const progress =
     lyricWords.length > 0
@@ -1520,20 +1516,31 @@ function SkimSyncView({
     speechStartedAtRef.current = Date.now();
     pausedAtRef.current = null;
     totalPausedTimeRef.current = 0;
+    lastBoundaryAtRef.current = 0;
+    trackerIsActiveRef.current = true;
+    trackerIsPausedRef.current = false;
 
     const estimatedWordsPerMinute = 150;
     const estimatedWordsPerSecond = estimatedWordsPerMinute / 60;
+    const boundaryStaleAfterMs = 900;
 
     fallbackTimerRef.current = window.setInterval(() => {
-      if (!window.speechSynthesis.speaking || window.speechSynthesis.paused) {
+      if (!trackerIsActiveRef.current || trackerIsPausedRef.current) {
+        return;
+      }
+
+      const now = Date.now();
+
+      const boundaryIsStillFresh =
+        lastBoundaryAtRef.current > 0 &&
+        now - lastBoundaryAtRef.current < boundaryStaleAfterMs;
+
+      if (boundaryIsStillFresh) {
         return;
       }
 
       const elapsedSeconds =
-        (Date.now() -
-          speechStartedAtRef.current -
-          totalPausedTimeRef.current) /
-        1000;
+        (now - speechStartedAtRef.current - totalPausedTimeRef.current) / 1000;
 
       const estimatedWordIndex = Math.min(
         lyricWords.length - 1,
@@ -1544,16 +1551,15 @@ function SkimSyncView({
 
       if (!estimatedWord) return;
 
-      if (!boundaryHasWorkedRef.current) {
-        setCurrentCharIndex(estimatedWord.start);
-      }
-    }, 250);
+      setCurrentCharIndex(estimatedWord.start);
+    }, 180);
   };
 
   const handlePause = () => {
     if (!isPlaying) return;
 
     pausedAtRef.current = Date.now();
+    trackerIsPausedRef.current = true;
     window.speechSynthesis.pause();
     setIsPlaying(false);
   };
@@ -1564,6 +1570,7 @@ function SkimSyncView({
       pausedAtRef.current = null;
     }
 
+    trackerIsPausedRef.current = false;
     window.speechSynthesis.resume();
     setIsPlaying(true);
   };
@@ -1578,13 +1585,14 @@ function SkimSyncView({
     utterance.pitch = 1;
 
     utterance.onstart = () => {
+      trackerIsActiveRef.current = true;
+      trackerIsPausedRef.current = false;
       setIsPlaying(true);
-      startFallbackTimer();
     };
 
     utterance.onboundary = (event) => {
       if (typeof event.charIndex === "number" && event.charIndex >= 0) {
-        boundaryHasWorkedRef.current = true;
+        lastBoundaryAtRef.current = Date.now();
         setCurrentCharIndex(event.charIndex);
       }
     };
@@ -1594,6 +1602,7 @@ function SkimSyncView({
         pausedAtRef.current = Date.now();
       }
 
+      trackerIsPausedRef.current = true;
       setIsPlaying(false);
     };
 
@@ -1603,10 +1612,13 @@ function SkimSyncView({
         pausedAtRef.current = null;
       }
 
+      trackerIsPausedRef.current = false;
       setIsPlaying(true);
     };
 
     utterance.onend = () => {
+      trackerIsActiveRef.current = false;
+      trackerIsPausedRef.current = false;
       stopFallbackTimer();
       setIsPlaying(false);
       setCurrentCharIndex(aiScript.length);
@@ -1614,11 +1626,15 @@ function SkimSyncView({
 
     utterance.onerror = (event) => {
       console.error("Speech synthesis error:", event);
+      trackerIsActiveRef.current = false;
+      trackerIsPausedRef.current = false;
       stopFallbackTimer();
       setIsPlaying(false);
     };
 
     utteranceRef.current = utterance;
+    startFallbackTimer();
+    setIsPlaying(true);
     window.speechSynthesis.speak(utterance);
   };
 
@@ -1818,81 +1834,86 @@ function SkimSyncView({
                   </div>
                 </div>
 
-                <div className="h-[280px] overflow-hidden rounded-2xl border border-[#5A22C3]/5 bg-[#F3E8FF]/10 sm:h-[300px] lg:h-[302px]">
-                  <div
-                    ref={lyricsScrollRef}
-                    className="h-full w-full overflow-y-auto px-2 py-10 text-center sm:px-4 sm:py-12"
-                    style={{
-                      WebkitOverflowScrolling: "touch",
-                    }}
-                  >
-                    <div className="flex flex-col gap-4 sm:gap-5">
-                      {lyricLines.length > 0 ? (
-                        lyricLines.map((line, lineIndex) => {
-                          const isActiveLine = lineIndex === activeLineIndex;
-                          const isPastLine = lineIndex < activeLineIndex;
+                <div
+                  ref={lyricsScrollRef}
+                  className="relative h-[280px] overflow-hidden rounded-2xl border border-[#5A22C3]/5 bg-[#F3E8FF]/10 sm:h-[300px] lg:h-[302px]"
+                >
+                  <div className="pointer-events-none absolute left-0 right-0 top-1/2 z-10 h-[92px] -translate-y-1/2 border-y border-[#5A22C3]/10 bg-white/80 shadow-[0_16px_40px_rgba(90,34,195,0.08)] backdrop-blur-sm" />
 
-                          return (
-                            <motion.div
-                              key={lineIndex}
-                              ref={isActiveLine ? activeLineRef : undefined}
-                              initial={{ opacity: 0, y: 12 }}
-                              animate={{
-                                opacity: isActiveLine
-                                  ? 1
-                                  : isPastLine
-                                  ? 0.28
-                                  : 0.18,
-                                y: 0,
-                                scale: isActiveLine ? 1 : 0.96,
-                              }}
-                              transition={{
-                                duration: 0.25,
-                                ease: "easeOut",
-                              }}
-                              className={`rounded-2xl px-3 py-4 transition-colors sm:px-6 sm:py-5 ${
-                                isActiveLine
-                                  ? "border border-[#5A22C3]/10 bg-white shadow-sm"
-                                  : "border border-transparent"
-                              }`}
-                            >
-                              <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 sm:gap-x-3 sm:gap-y-2">
-                                {line.map((word) => {
-                                  const hasBeenSpoken =
-                                    word.id <= currentWordIndex;
-                                  const isCurrent =
-                                    word.id === currentWordIndex;
+                  <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-16 bg-gradient-to-b from-[#F3E8FF] to-transparent" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-16 bg-gradient-to-t from-[#F3E8FF] to-transparent" />
 
-                                  return (
-                                    <span
-                                      key={`${word.id}-${word.text}`}
-                                      className={`inline-block font-semibold leading-tight transition-colors ${
-                                        isActiveLine
-                                          ? "text-2xl sm:text-4xl lg:text-5xl"
-                                          : "text-lg sm:text-2xl"
-                                      } ${
-                                        isCurrent
-                                          ? "text-[#5A22C3]"
-                                          : hasBeenSpoken
-                                          ? "text-gray-800"
-                                          : "text-gray-400"
-                                      }`}
-                                    >
-                                      {word.text}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            </motion.div>
-                          );
-                        })
-                      ) : (
-                        <div className="flex h-full items-center justify-center px-4 text-sm text-gray-500">
-                          No lyric summary was generated for this file.
-                        </div>
-                      )}
+                  {lyricLines.length > 0 ? (
+                    <motion.div
+                      className="relative z-30 flex flex-col items-center px-2 text-center sm:px-4"
+                      animate={{
+                        y: lyricTrackY,
+                      }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 120,
+                        damping: 24,
+                        mass: 0.7,
+                      }}
+                    >
+                      {lyricLines.map((line, lineIndex) => {
+                        const isActiveLine = lineIndex === activeLineIndex;
+                        const isPastLine = lineIndex < activeLineIndex;
+
+                        return (
+                          <motion.div
+                            key={lineIndex}
+                            ref={isActiveLine ? activeLineRef : undefined}
+                            className="flex h-[92px] w-full items-center justify-center px-3 sm:px-6"
+                            animate={{
+                              opacity: isActiveLine
+                                ? 1
+                                : isPastLine
+                                ? 0.26
+                                : 0.2,
+                              scale: isActiveLine ? 1 : 0.92,
+                            }}
+                            transition={{
+                              duration: 0.2,
+                              ease: "easeOut",
+                            }}
+                          >
+                            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 sm:gap-x-3 sm:gap-y-2">
+                              {line.map((word) => {
+                                const hasBeenSpoken =
+                                  word.id <= currentWordIndex;
+                                const isCurrent =
+                                  word.id === currentWordIndex;
+
+                                return (
+                                  <span
+                                    key={`${word.id}-${word.text}`}
+                                    className={`inline-block font-semibold leading-tight transition-colors ${
+                                      isActiveLine
+                                        ? "text-2xl sm:text-4xl lg:text-5xl"
+                                        : "text-lg sm:text-2xl"
+                                    } ${
+                                      isCurrent
+                                        ? "text-[#5A22C3]"
+                                        : hasBeenSpoken
+                                        ? "text-gray-800"
+                                        : "text-gray-400"
+                                    }`}
+                                  >
+                                    {word.text}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </motion.div>
+                  ) : (
+                    <div className="flex h-full items-center justify-center px-4 text-sm text-gray-500">
+                      No lyric summary was generated for this file.
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="shrink-0 pt-4">
