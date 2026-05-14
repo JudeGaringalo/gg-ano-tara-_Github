@@ -21,6 +21,11 @@ const DOCUMENT_FORMATS = ["pdf", "docx", "xlsx", "xls", "txt"];
 const IMAGE_FORMATS = ["jpg", "jpeg", "png", "webp"];
 const LONG_DOCUMENT_WORD_LIMIT = 500;
 
+// Use the cheaper/faster text model for extracted document text.
+// Keep the vision model only for camera/image uploads because llama-3.1-8b-instant cannot read images.
+const GROQ_TEXT_MODEL = "llama-3.1-8b-instant";
+const GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+
 type ImageMode =
   | "study_document_image"
   | "study_mixed_image"
@@ -31,6 +36,8 @@ type ImageAnalysisResult = {
   accepted?: boolean;
   imageMode?: ImageMode;
   rejectionReason?: string;
+  readableWordCount?: number;
+  extractedText?: string;
   script?: string;
 };
 
@@ -77,6 +84,11 @@ function parseImageAnalysis(rawResponse: string): ImageAnalysisResult {
       accepted: Boolean(parsed.accepted),
       imageMode: parsed.imageMode || "unclear_image",
       rejectionReason: parsed.rejectionReason || "",
+      readableWordCount:
+        typeof parsed.readableWordCount === "number"
+          ? parsed.readableWordCount
+          : countWords(String(parsed.extractedText || "")),
+      extractedText: parsed.extractedText || "",
       script: parsed.script || "",
     };
   } catch {
@@ -148,71 +160,52 @@ export async function POST(req: Request) {
       console.log("Validating image study relevance...");
 
       const imageValidationPrompt = `
-You are an AI study-material validator and study assistant with vision ability.
+You are an OCR-based study image validator and study assistant.
 
-The user uploaded or captured an image. Your task is to decide whether the image should be accepted into a study app.
+The user uploaded or captured an image. Your job is to inspect the image and estimate how many READABLE WORDS are visible.
 
-ACCEPT the image only if it clearly appears to be study-related or document-related, such as:
-- handwritten or typed notes
-- textbook pages
-- worksheets
-- exam reviewers
-- school modules
-- classroom slides
-- lecture screenshots
-- whiteboard writing
-- diagrams, charts, graphs, formulas, tables, or educational illustrations
-- screenshots of study content
-- documents with readable academic, work, research, or informational content
+The app rule is now based on readable text count:
 
-REJECT the image if it is not useful as study material, such as:
-- pets or animals
-- selfies or portraits
-- people posing
-- food
-- random objects
-- bedrooms, rooms, houses, or scenery
-- product photos
-- memes
-- aesthetic photos
-- blank or nearly blank images
-- images with no visible study/document content
+ACCEPT:
+- Accept the image if it has 3 or more readable words.
+- If it has more than 10 readable words, treat it as valid study/document material and create a useful spoken summary when summarization is requested.
 
-VERY IMPORTANT:
-Do not summarize non-study images.
-Do not describe a rejected image in detail.
-Do not say, "This image shows a dog" or summarize the dog.
-If the image is not study material, reject it politely and briefly.
-If the image is unclear and you cannot confidently identify study/document content, reject it.
+REJECT:
+- Reject the image if it has fewer than 3 readable words.
+- Reject blank, blurry, decorative, random, or non-document images when fewer than 3 readable words can be detected.
+
+IMPORTANT:
+- Do not reject only because the image is not obviously a school document.
+- If the image contains readable text, notes, slides, textbook content, worksheets, diagrams with labels, screenshots with text, forms, labels, or document-like content, count the readable words.
+- Be practical. The goal is to allow photographed notes/documents/screenshots through when enough readable text exists.
+- If validateOnly is true or checkOnly is true, do not summarize. Only validate.
 
 Return ONLY valid JSON in this exact format:
 {
   "accepted": true | false,
   "imageMode": "study_document_image" | "study_mixed_image" | "non_study_image" | "unclear_image",
+  "readableWordCount": 0,
+  "extractedText": "Short extracted readable text sample. Empty if none.",
   "rejectionReason": "Short reason if rejected. Empty string if accepted.",
-  "script": "If accepted, provide a natural spoken study summary. If validateOnly is true or if rejected, use an empty string."
+  "script": "If accepted and summarization is requested, provide a natural spoken study summary. If validateOnly/checkOnly is true or if rejected, use an empty string."
 }
 
-If accepted:
-Create a clear, natural spoken summary optimized for text-to-speech.
-No markdown.
-No bullets.
-No headings.
-Keep it under 3 minutes of speaking time.
+Decision rules:
+- readableWordCount < 3: accepted must be false.
+- readableWordCount >= 3: accepted must be true.
+- readableWordCount > 10 and summarization is requested: script must summarize the readable content.
+- validateOnly/checkOnly: script must be empty.
 
-If rejected:
-Set accepted to false.
-Set script to an empty string.
-Use a short rejectionReason, such as:
-"This image does not appear to be study material. Please upload notes, slides, textbook pages, worksheets, diagrams, or documents instead."
+If rejected, use this rejectionReason:
+"This image has too little readable text. Please upload a clearer page, notes, slide, worksheet, screenshot, or document."
 `;
 
       const userText = validateOnly || checkOnly
-        ? "Validate whether this image is acceptable study material. Do not summarize it yet."
-        : "Validate this image. If it is acceptable study material, summarize the study content. If it is not study material, reject it.";
+        ? "Validate this image by readable word count. If it has 3 or more readable words, accept it. If it has fewer than 3 readable words, reject it. Do not summarize it yet."
+        : "Validate this image by readable word count. If it has more than 10 readable words, accept it and summarize the readable content. If it has 3 to 10 readable words, accept it and provide a brief summary. If it has fewer than 3 readable words, reject it.";
 
       const chatCompletion = await groq.chat.completions.create({
-        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        model: GROQ_VISION_MODEL,
         temperature: 0.2,
         messages: [
           {
@@ -241,6 +234,24 @@ Use a short rejectionReason, such as:
         chatCompletion.choices[0]?.message?.content?.trim() || "";
 
       const parsedImageResult = parseImageAnalysis(rawResponse);
+      const readableWordCount =
+        typeof parsedImageResult.readableWordCount === "number"
+          ? parsedImageResult.readableWordCount
+          : countWords(parsedImageResult.extractedText || "");
+
+      const hasEnoughReadableText = readableWordCount >= 3;
+
+      if (!hasEnoughReadableText) {
+        return NextResponse.json({
+          accepted: false,
+          rejected: true,
+          imageMode: parsedImageResult.imageMode || "unclear_image",
+          readableWordCount,
+          rejectionReason:
+            "This image has too little readable text. Please upload a clearer page, notes, slide, worksheet, screenshot, or document.",
+          script: "",
+        });
+      }
 
       if (!parsedImageResult.accepted) {
         return NextResponse.json({
@@ -259,6 +270,7 @@ Use a short rejectionReason, such as:
           accepted: true,
           rejected: false,
           imageMode: parsedImageResult.imageMode || "study_document_image",
+          readableWordCount,
           script: "",
         });
       }
@@ -267,9 +279,11 @@ Use a short rejectionReason, such as:
         accepted: true,
         rejected: false,
         imageMode: parsedImageResult.imageMode || "study_document_image",
+        readableWordCount,
         script:
           parsedImageResult.script ||
-          "This image appears to contain study material, but I could not generate a clear summary from it.",
+          parsedImageResult.extractedText ||
+          "This image contains readable text, but I could not generate a clear summary from it.",
       });
     }
 
@@ -363,13 +377,13 @@ Use a short rejectionReason, such as:
       });
     }
 
-    const truncatedText = extractedText.substring(0, 15000);
+    const truncatedText = extractedText.substring(0, 8000);
 
     console.log("Sending document text to GROQ...");
 
     const chatCompletion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
-      temperature: 0.5,
+      model: GROQ_TEXT_MODEL,
+      temperature: 0.35,
       messages: [
         {
           role: "system",

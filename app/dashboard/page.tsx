@@ -31,7 +31,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ReactLenis, useLenis } from "@studio-freight/react-lenis";
 
 type TabType = "home" | "files" | "exam" | "exam-results" | "skim-sync";
 
@@ -58,6 +57,15 @@ type LongDocumentWarning = {
 type RejectedUpload = {
   fileName: string;
   reason: string;
+};
+
+type QuizQuestion = {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswerIndex: number;
+  explanation: string;
+  sourceFile?: string;
 };
 
 const ACCEPTED_UPLOAD_TYPES =
@@ -105,7 +113,6 @@ function isImageFile(file: StudyFile) {
 export default function Dashboard() {
   const router = useRouter();
   const supabase = createClient();
-  const lenis = useLenis();
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -201,14 +208,15 @@ export default function Dashboard() {
   }, [router, supabase]);
 
   useEffect(() => {
-    if (lenis) {
-      lenis.scrollTo(0, { immediate: true });
-    } else if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo(0, 0);
-    } else {
-      window.scrollTo(0, 0);
+    window.scrollTo({
+      top: 0,
+      behavior: "auto",
+    });
+
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
     }
-  }, [activeTab, lenis]);
+  }, [activeTab]);
 
   const showToast = (
     message: string,
@@ -291,7 +299,7 @@ export default function Dashboard() {
         return {
           accepted: false,
           reason:
-            "This image could not be validated. Please upload a clearer study document.",
+            "This image could not be validated. Please upload a clearer page, notes, slide, worksheet, screenshot, or document.",
         };
       }
 
@@ -302,7 +310,7 @@ export default function Dashboard() {
           accepted: false,
           reason:
             data.rejectionReason ||
-            "This image does not appear to be study material. Please upload notes, slides, textbook pages, worksheets, diagrams, or documents instead.",
+            "This image has too little readable text. Please upload a clearer page, notes, slide, worksheet, screenshot, or document.",
         };
       }
 
@@ -657,13 +665,8 @@ export default function Dashboard() {
 
   if (activeTab === "skim-sync" && skimSyncFiles.length > 0) {
     return (
-      <ReactLenis root options={{ lerp: 0.1, duration: 1.5, smoothWheel: true }}>
-        <style>{`
-          ::-webkit-scrollbar { display: none; }
-          * { -ms-overflow-style: none; scrollbar-width: none; }
-        `}</style>
-
-        <div className="relative min-h-screen overflow-hidden bg-white font-sans text-gray-900">
+      <>
+        <div className="relative min-h-screen bg-white font-sans text-gray-900">
           <nav className="sticky top-0 z-40 flex items-center justify-between gap-4 border-b border-gray-100 bg-white px-4 py-4 sm:px-6 md:px-12 md:py-5">
             <div className="flex min-w-0 items-center gap-4 sm:gap-6">
               <div className="flex w-20 shrink-0 items-center md:w-24">
@@ -697,22 +700,17 @@ export default function Dashboard() {
             </button>
           </nav>
 
-          <main className="relative px-4 py-6 sm:px-6 md:p-8 lg:p-12">
+          <main className="relative min-h-[calc(100vh-73px)] overflow-visible px-4 py-6 pb-32 sm:px-6 sm:pb-32 md:p-8 md:pb-32 lg:p-12 lg:pb-32">
             <SkimSyncView files={skimSyncFiles} onBack={hardRefreshDashboard} />
           </main>
         </div>
-      </ReactLenis>
+      </>
     );
   }
 
   return (
-    <ReactLenis root options={{ lerp: 0.1, duration: 1.5, smoothWheel: true }}>
-      <style>{`
-        ::-webkit-scrollbar { display: none; }
-        * { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
-
-      <div className="relative flex min-h-screen flex-col bg-gray-50 font-sans text-gray-900 selection:bg-gray-200">
+    <>
+      <div className="relative flex min-h-screen flex-col overflow-visible bg-gray-50 font-sans text-gray-900 selection:bg-gray-200">
         <input
           type="file"
           ref={fileInputRef}
@@ -918,7 +916,7 @@ export default function Dashboard() {
           </aside>
 
           <main
-            className="relative min-h-0 flex-1 p-4 sm:p-6 md:p-8 lg:p-12"
+            className="relative min-h-[calc(100vh-73px)] flex-1 overflow-visible p-4 pb-32 sm:p-6 sm:pb-32 md:p-8 md:pb-32 lg:p-12 lg:pb-32"
             ref={scrollContainerRef}
           >
             <AnimatePresence mode="wait">
@@ -986,7 +984,7 @@ export default function Dashboard() {
           </main>
         </div>
       </div>
-    </ReactLenis>
+    </>
   );
 }
 
@@ -2137,7 +2135,7 @@ function ExamView({
 
         <p className="text-sm text-gray-500">
           {selectedFiles.length === 0
-            ? "Select, upload, or capture study materials to generate study briefs"
+            ? "Select, upload, or capture study materials to generate a 1–5 question quiz"
             : `${selectedFiles.length} documents selected`}
         </p>
       </header>
@@ -2188,7 +2186,7 @@ function ExamView({
               className="flex items-center justify-center gap-2 rounded-lg bg-[#5A22C3] px-4 py-2 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#4a1ca3]"
             >
               <Sparkles size={16} />
-              Generate Flashcards
+              Generate Quiz
             </motion.button>
           )}
         </AnimatePresence>
@@ -2269,138 +2267,376 @@ function ExamFileRow({
   );
 }
 
-const generateHighlights = (file: StudyFile) => {
-  return [
-    {
-      type: "definition",
-      title: "Key Concept",
-      content: "Extracted definition from your document for " + file.name,
-    },
-    {
-      type: "question",
-      title: "Test Potential",
-      content: "Focus on high-probability exam questions.",
-    },
-  ];
-};
+function PostBriefView({ selectedFiles, onBack }: any) {
+  const supabase = createClient();
 
-function PostBriefView({
-  selectedFiles,
-  flippedCards,
-  setFlippedCards,
-  onBack,
-}: any) {
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [isLoadingQuiz, setIsLoadingQuiz] = useState(true);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [quizError, setQuizError] = useState<string | null>(null);
 
-  const allHighlights = selectedFiles.flatMap((file: StudyFile) => {
-    const fileHighlights = generateHighlights(file);
+  const answeredCount = questions.filter(
+    (question) => answers[question.id] !== undefined
+  ).length;
 
-    return fileHighlights
-      .filter((h: any) => h.type === "definition")
-      .map((h: any) => ({
-        ...h,
-        fileId: file.id,
-        fileName: file.name,
-      }));
-  });
+  const score = questions.reduce((total, question) => {
+    return answers[question.id] === question.correctAnswerIndex
+      ? total + 1
+      : total;
+  }, 0);
 
-  const toggleFlip = (index: number) => {
-    const newFlipped = new Set(flippedCards);
+  const fetchQuiz = async () => {
+    if (!selectedFiles || selectedFiles.length === 0) {
+      setQuizError("Select at least one file before generating a quiz.");
+      setIsLoadingQuiz(false);
+      return;
+    }
 
-    if (newFlipped.has(index)) newFlipped.delete(index);
-    else newFlipped.add(index);
+    try {
+      setIsLoadingQuiz(true);
+      setQuizError(null);
+      setIsSubmitted(false);
+      setAnswers({});
 
-    setFlippedCards(newFlipped);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error("Missing active session.");
+      }
+
+      const res = await fetch("/api/generate-quiz", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          questionCount: 5,
+          files: selectedFiles.map((file: StudyFile) => ({
+            fileName: file.name,
+            filePath: file.filePath,
+            fileType: file.format,
+          })),
+        }),
+      });
+
+      const responseText = await res.text();
+
+      let data: any = null;
+
+      try {
+        data = responseText ? JSON.parse(responseText) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error(
+            "Quiz API route was not found. Make sure the file is saved exactly at app/api/generate-quiz/route.ts, then restart your dev server."
+          );
+        }
+
+        throw new Error(
+          data?.error ||
+            responseText?.slice(0, 300) ||
+            "Could not generate quiz."
+        );
+      }
+
+      const cleanQuestions: QuizQuestion[] = Array.isArray(data?.questions)
+        ? data.questions
+            .slice(0, 5)
+            .map((question: any, index: number) => {
+              const options = Array.isArray(question.options)
+                ? question.options.slice(0, 4)
+                : [];
+
+              return {
+                id: String(question.id || `question-${index + 1}`),
+                question: String(question.question || ""),
+                options,
+                correctAnswerIndex:
+                  typeof question.correctAnswerIndex === "number"
+                    ? Math.min(Math.max(question.correctAnswerIndex, 0), 3)
+                    : 0,
+                explanation: String(question.explanation || ""),
+                sourceFile: question.sourceFile
+                  ? String(question.sourceFile)
+                  : undefined,
+              };
+            })
+            .filter(
+              (question: QuizQuestion) =>
+                question.question.trim() && question.options.length === 4
+            )
+        : [];
+
+      if (cleanQuestions.length === 0) {
+        throw new Error(
+          "No quiz questions were generated. Try using clearer study materials."
+        );
+      }
+
+      setQuestions(cleanQuestions);
+    } catch (error: any) {
+      console.warn("Quiz generation failed:", error?.message || error);
+      setQuizError(
+        error?.message ||
+          "Could not generate a quiz from the selected files."
+      );
+    } finally {
+      setIsLoadingQuiz(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchQuiz();
+  }, [selectedFiles]);
+
+  const handleAnswer = (questionId: string, optionIndex: number) => {
+    if (isSubmitted) return;
+
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: optionIndex,
+    }));
+  };
+
+  const handleSubmitQuiz = () => {
+    if (answeredCount < questions.length) return;
+    setIsSubmitted(true);
+  };
+
+  const handleRetake = () => {
+    setAnswers({});
+    setIsSubmitted(false);
   };
 
   return (
     <div className="mx-auto w-full max-w-[1000px]">
-      <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#5A22C3]/10 bg-[#F3E8FF] px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#5A22C3]">
+            <BrainCircuit size={14} />
+            Exam Mode
+          </div>
+
           <h1 className="mb-1 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-            Study Session Active
+            Study Quiz
           </h1>
 
-          <p className="text-sm text-gray-500">Master your extracted insights</p>
+          <p className="text-sm text-gray-500">
+            {selectedFiles.length > 1
+              ? `Generated from ${selectedFiles.length} selected files.`
+              : `Generated from ${selectedFiles[0]?.name || "your selected file"}.`}
+          </p>
         </div>
 
         <button
           onClick={onBack}
           className="w-fit rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-[#5A22C3]"
         >
-          End Session
+          Back to Exam Mode
         </button>
       </header>
 
-      <div className="mb-12 flex flex-col items-center">
-        <p className="mb-6 text-xs font-medium uppercase tracking-wider text-[#5A22C3]">
-          Tap card to flip
-        </p>
+      {isLoadingQuiz ? (
+        <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{
+              repeat: Infinity,
+              duration: 2,
+              ease: "linear",
+            }}
+          >
+            <BrainCircuit size={42} className="mb-6 text-[#5A22C3]/50" />
+          </motion.div>
 
-        {allHighlights.length > 0 ? (
-          <div className="flex w-full max-w-2xl flex-col items-center">
-            <div className="perspective mb-8 w-full">
-              <motion.div
-                onClick={() => toggleFlip(currentCardIndex)}
-                className="preserve-3d relative h-[320px] w-full cursor-pointer transition-transform duration-500 ease-out sm:h-[350px]"
-                animate={{
-                  rotateY: flippedCards.has(currentCardIndex) ? 180 : 0,
-                }}
-              >
-                <div className="backface-hidden absolute inset-0 flex flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-md transition-colors hover:border-[#5A22C3]/50 sm:p-10">
-                  <div className="text-xl font-semibold text-gray-900 sm:text-2xl">
-                    {allHighlights[currentCardIndex].title}
-                  </div>
+          <p className="text-base font-medium text-gray-700">
+            Creating your quiz...
+          </p>
 
-                  <div className="absolute bottom-6 text-xs font-medium uppercase tracking-wider text-gray-400">
-                    Front
-                  </div>
+          <p className="mt-2 max-w-md text-sm text-gray-500">
+            Echo is reading the selected files and turning them into 1–5 quiz
+            questions.
+          </p>
+        </div>
+      ) : quizError ? (
+        <div className="rounded-2xl border border-red-100 bg-red-50 p-6 text-center">
+          <AlertTriangle className="mx-auto mb-4 text-red-500" size={32} />
+
+          <p className="font-semibold text-red-700">Quiz generation failed</p>
+
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-red-600">
+            {quizError}
+          </p>
+
+          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+            <button
+              onClick={onBack}
+              className="rounded-lg border border-red-100 bg-white px-5 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-100"
+            >
+              Choose Files
+            </button>
+
+            <button
+              onClick={fetchQuiz}
+              className="rounded-lg bg-[#5A22C3] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#4a1ca3]"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  {answeredCount} of {questions.length} answered
+                </p>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Answer all questions to see your score.
+                </p>
+              </div>
+
+              {isSubmitted ? (
+                <div className="rounded-xl bg-[#F3E8FF] px-4 py-3 text-sm font-semibold text-[#5A22C3]">
+                  Score: {score}/{questions.length}
                 </div>
-
-                <div className="backface-hidden rotate-y-180 absolute inset-0 flex transform flex-col items-center justify-center rounded-2xl bg-[#5A22C3] p-8 text-center shadow-md sm:p-10">
-                  <div className="text-lg font-medium leading-relaxed text-white sm:text-xl">
-                    {allHighlights[currentCardIndex].content}
-                  </div>
-
-                  <div className="absolute bottom-6 text-xs font-medium uppercase tracking-wider text-white/50">
-                    Back
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-
-            <div className="flex items-center gap-4 rounded-full border border-gray-200 bg-white p-2 shadow-sm">
-              <button
-                onClick={() =>
-                  setCurrentCardIndex(Math.max(0, currentCardIndex - 1))
-                }
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 text-gray-700 transition-colors hover:bg-[#F3E8FF] hover:text-[#5A22C3]"
-              >
-                <SkipBack size={16} />
-              </button>
-
-              <span className="min-w-[3rem] text-center text-sm font-medium text-gray-500">
-                {currentCardIndex + 1} / {allHighlights.length}
-              </span>
-
-              <button
-                onClick={() =>
-                  setCurrentCardIndex(
-                    Math.min(allHighlights.length - 1, currentCardIndex + 1)
-                  )
-                }
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#5A22C3] text-white shadow-sm transition-colors hover:bg-[#4a1ca3]"
-              >
-                <SkipForward size={16} />
-              </button>
+              ) : (
+                <button
+                  onClick={handleSubmitQuiz}
+                  disabled={answeredCount < questions.length}
+                  className="rounded-lg bg-[#5A22C3] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#4a1ca3] disabled:cursor-not-allowed disabled:bg-gray-300"
+                >
+                  Submit Quiz
+                </button>
+              )}
             </div>
           </div>
-        ) : (
-          <p className="py-12 text-center font-medium text-gray-500">
-            No definitions extracted from these files.
-          </p>
-        )}
-      </div>
+
+          <div className="space-y-5">
+            {questions.map((question, questionIndex) => {
+              const selectedAnswer = answers[question.id];
+              const hasAnswer = selectedAnswer !== undefined;
+
+              return (
+                <div
+                  key={question.id}
+                  className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6"
+                >
+                  <div className="mb-5 flex items-start gap-4">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F3E8FF] text-sm font-bold text-[#5A22C3]">
+                      {questionIndex + 1}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-base font-semibold leading-relaxed text-gray-900 sm:text-lg">
+                        {question.question}
+                      </h2>
+
+                      {question.sourceFile && (
+                        <p className="mt-1 text-xs text-gray-400">
+                          Source: {question.sourceFile}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    {question.options.map((option, optionIndex) => {
+                      const isSelected = selectedAnswer === optionIndex;
+                      const isCorrect =
+                        optionIndex === question.correctAnswerIndex;
+                      const isWrongSelected =
+                        isSubmitted && isSelected && !isCorrect;
+
+                      return (
+                        <button
+                          key={`${question.id}-${optionIndex}`}
+                          onClick={() => handleAnswer(question.id, optionIndex)}
+                          disabled={isSubmitted}
+                          className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left text-sm leading-relaxed transition-colors ${
+                            isSubmitted && isCorrect
+                              ? "border-green-200 bg-green-50 text-green-800"
+                              : isWrongSelected
+                              ? "border-red-200 bg-red-50 text-red-700"
+                              : isSelected
+                              ? "border-[#5A22C3] bg-[#F3E8FF] text-[#5A22C3]"
+                              : "border-gray-200 bg-white text-gray-700 hover:border-[#5A22C3]/30 hover:bg-[#F3E8FF]/30"
+                          }`}
+                        >
+                          <span
+                            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${
+                              isSubmitted && isCorrect
+                                ? "border-green-500 bg-green-500 text-white"
+                                : isWrongSelected
+                                ? "border-red-500 bg-red-500 text-white"
+                                : isSelected
+                                ? "border-[#5A22C3] bg-[#5A22C3] text-white"
+                                : "border-gray-300 text-gray-400"
+                            }`}
+                          >
+                            {String.fromCharCode(65 + optionIndex)}
+                          </span>
+
+                          <span>{option}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {isSubmitted && (
+                    <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                        Explanation
+                      </p>
+
+                      <p className="mt-1 text-sm leading-relaxed text-gray-600">
+                        {question.explanation ||
+                          "Review the related part of your study material for this answer."}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-8 flex flex-col justify-end gap-3 sm:flex-row">
+            <button
+              onClick={onBack}
+              className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-[#5A22C3]"
+            >
+              Choose Other Files
+            </button>
+
+            {isSubmitted ? (
+              <button
+                onClick={handleRetake}
+                className="rounded-lg bg-[#5A22C3] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#4a1ca3]"
+              >
+                Retake Quiz
+              </button>
+            ) : (
+              <button
+                onClick={handleSubmitQuiz}
+                disabled={answeredCount < questions.length}
+                className="rounded-lg bg-[#5A22C3] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#4a1ca3] disabled:cursor-not-allowed disabled:bg-gray-300"
+              >
+                Submit Quiz
+              </button>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
