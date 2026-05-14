@@ -58,14 +58,11 @@ const LoginPage: React.FC = () => {
                     transition={{ duration: 1 }} 
                     className="absolute inset-0 z-10 bg-gradient-to-t from-black/95 via-black/60 to-black/40 lg:to-black/20 pointer-events-none" 
                 />
-                {/* Subtle dot pattern overlay */}
-                <div 
-                    className="absolute inset-0 z-10 bg-black/10 backdrop-blur-[2px] lg:backdrop-blur-[1px]" 
-                    style={{ backgroundImage: 'radial-gradient(circle, #ffffff22 1px, transparent 1px)', backgroundSize: '40px 40px' }} 
+
+                <div className="absolute inset-0 z-10 bg-black/10 backdrop-blur-[2px] lg:backdrop-blur-[1px] shadow-[inset_0_0_120px_rgba(147,51,234,0.5)] lg:shadow-[inset_0_0_200px_rgba(147,51,234,0.4)]" 
                 />
             </div>
 
-            {/* --- LEFT SECTION: LOGIN FORM --- */}
             <section className="relative z-20 flex w-full flex-col justify-center px-6 py-12 lg:w-1/2 lg:bg-white lg:px-16 min-h-screen lg:min-h-0">
                 
                 {/* Logo */}
@@ -82,21 +79,18 @@ const LoginPage: React.FC = () => {
                         <img 
                             src="/images/logo.png" 
                             alt="Echo Logo" 
-                            // Turns white on mobile dark bg, stays black on desktop white bg
                             style={{ filter: 'invert(18%) sepia(88%) saturate(4535%) hue-rotate(262deg) brightness(82%) contrast(92%)' }}
                             className="w-full h-auto object-contain brightness-0 invert lg:brightness-100 lg:invert-0" 
                         />
                     </button>
                 </motion.div>
 
-                {/* Form Container */}
                 <motion.div 
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
                     className="mx-auto w-full max-w-sm"
                 >
-                    {/* Glassmorphism on mobile, Flat white on desktop */}
                     <div className="w-full rounded-[2rem] bg-white/10 p-8 backdrop-blur-xl border border-white/20 shadow-2xl lg:border-none lg:bg-transparent lg:p-0 lg:backdrop-blur-none lg:shadow-none text-center lg:text-left">
                         
                         <h2 className="text-3xl lg:text-4xl font-semibold tracking-tight text-white lg:text-slate-900">
