@@ -20,6 +20,17 @@ const groq = new Groq({
 const DOCUMENT_FORMATS = ["pdf", "docx", "xlsx", "xls", "txt"];
 const IMAGE_FORMATS = ["jpg", "jpeg", "png", "webp"];
 
+type ImageMode =
+  | "text_image"
+  | "mixed_image"
+  | "visual_image"
+  | "unclear_image";
+
+type ImageAnalysisResult = {
+  imageMode?: ImageMode;
+  script?: string;
+};
+
 function normalizeFileType(fileType: string) {
   return fileType.toLowerCase().replace(".", "").trim();
 }
@@ -30,6 +41,42 @@ function isImageFormat(format: string) {
 
 function isDocumentFormat(format: string) {
   return DOCUMENT_FORMATS.includes(format) || format.includes("pdf");
+}
+
+function cleanJsonResponse(rawResponse: string) {
+  const cleaned = rawResponse
+    .replace(/^```json/i, "")
+    .replace(/^```/i, "")
+    .replace(/```$/i, "")
+    .trim();
+
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    return cleaned.slice(firstBrace, lastBrace + 1);
+  }
+
+  return cleaned;
+}
+
+function parseImageAnalysis(rawResponse: string): ImageAnalysisResult {
+  try {
+    const cleanedResponse = cleanJsonResponse(rawResponse);
+    const parsed = JSON.parse(cleanedResponse);
+
+    return {
+      imageMode: parsed.imageMode || "unclear_image",
+      script: parsed.script || "",
+    };
+  } catch {
+    return {
+      imageMode: "unclear_image",
+      script:
+        rawResponse ||
+        "I can see the uploaded image, but I could not confidently generate a structured summary from it.",
+    };
+  }
 }
 
 export async function POST(req: Request) {
@@ -54,6 +101,16 @@ export async function POST(req: Request) {
       );
     }
 
+    /**
+     * IMAGE PROCESSING
+     *
+     * This handles camera captures, screenshots, photos, diagrams,
+     * non-text images, mixed images, and text-heavy images.
+     *
+     * Important:
+     * It does NOT fail just because the image has no readable text.
+     * If no text is visible, the AI summarizes the visual content instead.
+     */
     if (isImageFormat(format)) {
       console.log("Creating signed image URL...");
 
@@ -76,21 +133,60 @@ export async function POST(req: Request) {
 
       console.log("Sending image to GROQ Vision...");
 
+      const imageAnalysisPrompt = `
+You are an AI study assistant with vision ability.
+
+The user uploaded or captured an image. The image may be:
+1. A text-heavy image, such as notes, textbook pages, worksheets, slides, screenshots, or whiteboard writing.
+2. A mixed image, with both visible objects and some text.
+3. A non-text visual image, such as a person, object, scene, diagram, room, animal, product, artwork, or photo.
+4. An unclear or low-quality image.
+
+Your first job is to silently classify the image.
+
+VERY IMPORTANT:
+Do not respond with "there is no text on the image" as the main answer.
+Do not fail just because there is no readable text.
+If the image has no readable text, summarize what is visually present instead.
+If the image is not study material, still give a useful spoken summary of what the image appears to show.
+Do not invent details that are not visible.
+If something is unclear, say it is unclear naturally.
+
+Return ONLY valid JSON in this exact format:
+{
+  "imageMode": "text_image" | "mixed_image" | "visual_image" | "unclear_image",
+  "script": "A clear, natural spoken summary optimized for text-to-speech. No markdown. No bullets. No headings."
+}
+
+For text_image:
+Summarize the visible written content.
+
+For mixed_image:
+Summarize both the visible text and the important visual context.
+
+For visual_image:
+Describe and summarize the visible subject, scene, objects, and any meaningful context. Do not say the image has no text as the main response.
+
+For unclear_image:
+Say what can be confidently seen and mention that some details are unclear.
+
+Keep the script under 3 minutes of speaking time.
+`;
+
       const chatCompletion = await groq.chat.completions.create({
         model: "meta-llama/llama-4-scout-17b-16e-instruct",
-        temperature: 0.4,
+        temperature: 0.3,
         messages: [
           {
             role: "system",
-            content:
-              "You are an AI study assistant. The user uploaded or captured an image that may contain notes, textbook pages, slides, whiteboard content, diagrams, worksheets, or screenshots. Read the visible content carefully and create a clear, engaging, conversational summary optimized to be read aloud by a Text-to-Speech engine. Keep it under 3 minutes of speaking time. Do not use markdown formatting like **, #, bullet symbols, or tables because this will be read aloud. If the image is unclear, say what you can confidently read and mention that some parts may be unclear.",
+            content: imageAnalysisPrompt,
           },
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text: "Please read this image and summarize the key study points in a natural spoken style.",
+                text: "Analyze this uploaded image. If it contains readable text, summarize it. If it does not contain readable text, summarize the visible image instead.",
               },
               {
                 type: "image_url",
@@ -103,13 +199,24 @@ export async function POST(req: Request) {
         ] as any,
       });
 
+      const rawResponse =
+        chatCompletion.choices[0]?.message?.content?.trim() || "";
+
+      const parsedImageResult = parseImageAnalysis(rawResponse);
+
       return NextResponse.json({
+        imageMode: parsedImageResult.imageMode || "unclear_image",
         script:
-          chatCompletion.choices[0]?.message?.content ||
-          "No image summary generated.",
+          parsedImageResult.script ||
+          "I can see the uploaded image, but I could not confidently generate a summary from it.",
       });
     }
 
+    /**
+     * DOCUMENT PROCESSING
+     *
+     * This handles PDF, DOCX, XLSX, XLS, and TXT files.
+     */
     console.log("Downloading document...");
 
     const { data: fileData, error: downloadError } = await supabase.storage
@@ -182,7 +289,7 @@ export async function POST(req: Request) {
         {
           role: "system",
           content:
-            "You are an AI study assistant. The user has provided raw text extracted from a study document. Create a clear, engaging, conversational summary of the core concepts that is optimized to be read aloud by a Text-to-Speech engine. Keep it under 3 minutes of speaking time. Do not use markdown formatting like ** or #, as this will be read aloud.",
+            "You are an AI study assistant. The user has provided raw text extracted from a study document. Create a clear, engaging, conversational summary of the core concepts that is optimized to be read aloud by a Text-to-Speech engine. Keep it under 3 minutes of speaking time. Do not use markdown formatting like **, #, bullet symbols, or tables because this will be read aloud.",
         },
         {
           role: "user",
