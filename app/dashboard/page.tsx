@@ -20,7 +20,6 @@ import {
   SkipBack,
   SkipForward,
   Layers,
-  Mic2,
   AudioLines,
   Wand2,
   Camera,
@@ -1445,6 +1444,7 @@ function SkimSyncView({
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const lyricsScrollRef = useRef<HTMLDivElement | null>(null);
   const activeLineRef = useRef<HTMLDivElement | null>(null);
+  const companionVideoRef = useRef<HTMLVideoElement | null>(null);
 
   const fallbackTimerRef = useRef<number | null>(null);
   const speechStartedAtRef = useRef<number>(0);
@@ -1461,6 +1461,28 @@ function SkimSyncView({
     files.length > 1
       ? `Combined Skim-Sync (${files.length} Files)`
       : files[0]?.name;
+
+  useEffect(() => {
+    const video = companionVideoRef.current;
+
+    if (!video) return;
+
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+
+    if (isPlaying) {
+      const playPromise = video.play();
+
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.warn("Companion video play was blocked:", error);
+        });
+      }
+    } else {
+      video.pause();
+    }
+  }, [isPlaying]);
 
   const stopFallbackTimer = () => {
     if (fallbackTimerRef.current !== null) {
@@ -1839,8 +1861,22 @@ function SkimSyncView({
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
-                  className="relative flex h-28 w-28 items-center justify-center rounded-full border border-[#5A22C3]/20 bg-[#F3E8FF]/50 sm:h-36 sm:w-36 lg:h-40 lg:w-40"
-                />
+                  className="relative z-10 flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border border-[#5A22C3]/20 bg-[#F3E8FF]/50 shadow-[0_18px_50px_rgba(90,34,195,0.14)] sm:h-36 sm:w-36 lg:h-40 lg:w-40"
+                >
+                  <video
+                    ref={companionVideoRef}
+                    src="/companion.mp4"
+                    muted
+                    loop
+                    playsInline
+                    preload="auto"
+                    className={`h-full w-full object-cover transition-all duration-300 ${
+                      isPlaying
+                        ? "scale-105 opacity-100"
+                        : "scale-100 opacity-75 grayscale"
+                    }`}
+                  />
+                </motion.div>
 
                 <motion.div
                   animate={isPlaying ? { rotate: -360 } : { rotate: 0 }}
@@ -1850,12 +1886,6 @@ function SkimSyncView({
                     ease: "linear",
                   }}
                   className="absolute inset-5 rounded-full border border-[#5A22C3]/20"
-                />
-
-                <Mic2
-                  className={`absolute z-10 h-9 w-9 transition-colors sm:h-11 sm:w-11 ${
-                    isPlaying ? "text-[#5A22C3]" : "text-gray-400"
-                  }`}
                 />
               </div>
 
