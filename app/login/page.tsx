@@ -8,13 +8,13 @@ import { createClient } from "@/app/lib/supabase/client";
 import { ReactLenis } from '@studio-freight/react-lenis';
 
 const avatarUrls = [
-    "/images/Team/Jude.jpg",
-    "/images/Team/Sai.jpg",
-    "/images/Team/Kristine.jpg",
-    "/images/Team/Trisha.jpg",
-    "/images/Team/Mary.jpg",
-    "/images/Team/Gab.jpg",
-    "/images/Team/Jahmell.jpg",
+    "/images/team/jude.jpg",
+    "/images/team/sai.jpg",
+    "/images/team/kristine.jpg",
+    "/images/team/trisha.jpg",
+    "/images/team/mary.jpg",
+    "/images/team/gab.jpg",
+    "/images/team/jahmell.jpg",
 ];
 
 const LoginPage: React.FC = () => {
