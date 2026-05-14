@@ -355,6 +355,9 @@ function SkimSyncView({ files, onBack }: { files: StudyFile[], onBack: () => voi
   const [aiScript, setAiScript] = useState<string>('');
   const [currentCharIndex, setCurrentCharIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // FIX: Storing utterance in a ref prevents garbage collection bugs in Chrome
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const displayTitle = files.length > 1 ? `Combined Skim-Sync (${files.length} Files)` : files[0]?.name;
 
@@ -427,6 +430,7 @@ function SkimSyncView({ files, onBack }: { files: StudyFile[], onBack: () => voi
   const nextLine = lyricLines[activeLineIndex + 1] || [];
   const previousLine = lyricLines[activeLineIndex - 1] || [];
 
+  // FIX: Updated togglePlay to use the ref
   const togglePlay = () => {
     if (isPlaying) {
       window.speechSynthesis.pause();
@@ -435,19 +439,20 @@ function SkimSyncView({ files, onBack }: { files: StudyFile[], onBack: () => voi
       if (window.speechSynthesis.paused) {
         window.speechSynthesis.resume();
       } else {
-        const utterance = new SpeechSynthesisUtterance(aiScript);
+        utteranceRef.current = new SpeechSynthesisUtterance(aiScript);
 
-        utterance.onboundary = (event) => {
+        utteranceRef.current.onboundary = (event) => {
           if (event.name === 'word') {
             setCurrentCharIndex(event.charIndex);
           }
         };
 
-        utterance.onend = () => {
+        utteranceRef.current.onend = () => {
           setIsPlaying(false);
           setCurrentCharIndex(aiScript.length);
         };
-        window.speechSynthesis.speak(utterance);
+        
+        window.speechSynthesis.speak(utteranceRef.current);
       }
       setIsPlaying(true);
     }
