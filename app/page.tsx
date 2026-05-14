@@ -56,7 +56,7 @@ export default function LandingPage() {
 
   return (
     // 2. Wrap the component in ReactLenis and define options for web & mobile
-    <ReactLenis root options={{ lerp: 0.1, duration: 1.2, smoothWheel: true, smoothTouch: true }}>
+    <ReactLenis root options={{ lerp: 0.1, duration: 1.2, smoothWheel: true }}>
       <div className="min-h-screen bg-white relative overflow-x-hidden">
         <div className="absolute inset-0 z-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px] opacity-50"></div>
 
