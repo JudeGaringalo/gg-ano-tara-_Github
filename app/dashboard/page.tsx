@@ -1445,6 +1445,7 @@ function SkimSyncView({
   const lyricsScrollRef = useRef<HTMLDivElement | null>(null);
   const activeLineRef = useRef<HTMLDivElement | null>(null);
   const companionVideoRef = useRef<HTMLVideoElement | null>(null);
+  const progressBarRef = useRef<HTMLDivElement | null>(null);
 
   const fallbackTimerRef = useRef<number | null>(null);
   const speechStartedAtRef = useRef<number>(0);
@@ -1940,6 +1941,111 @@ function SkimSyncView({
     handlePlayFromWord(resumeFromWordIndex);
   };
 
+  const seekToWordIndex = (targetWordIndex: number, shouldResume: boolean) => {
+    if (!lyricWords.length) return;
+
+    const safeWordIndex = Math.min(
+      Math.max(targetWordIndex, 0),
+      lyricWords.length - 1
+    );
+
+    const targetWord = lyricWords[safeWordIndex];
+
+    if (!targetWord) return;
+
+    trackerIsActiveRef.current = false;
+    trackerIsPausedRef.current = false;
+    shouldContinueSpeechRef.current = false;
+    ignoreNextSpeechEndRef.current = true;
+    stopFallbackTimer();
+    window.speechSynthesis.cancel();
+
+    setCurrentCharIndex(targetWord.start);
+    setIsPlaying(false);
+
+    if (shouldResume) {
+      window.setTimeout(() => {
+        handlePlayFromWord(safeWordIndex);
+      }, 120);
+    }
+  };
+
+  const getSeekWordIndexFromClientX = (clientX: number) => {
+    const progressBar = progressBarRef.current;
+
+    if (!progressBar || !lyricWords.length) return currentWordIndex;
+
+    const rect = progressBar.getBoundingClientRect();
+    const rawPercent = (clientX - rect.left) / rect.width;
+    const clampedPercent = Math.min(Math.max(rawPercent, 0), 1);
+
+    return Math.round(clampedPercent * Math.max(lyricWords.length - 1, 0));
+  };
+
+  const handleProgressPointerDown = (
+    event: React.PointerEvent<HTMLDivElement>
+  ) => {
+    if (!lyricWords.length || isLoading) return;
+
+    event.preventDefault();
+
+    const shouldResumeAfterSeek = isPlaying;
+    const progressBar = progressBarRef.current;
+
+    progressBar?.setPointerCapture(event.pointerId);
+
+    seekToWordIndex(
+      getSeekWordIndexFromClientX(event.clientX),
+      shouldResumeAfterSeek
+    );
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      seekToWordIndex(
+        getSeekWordIndexFromClientX(moveEvent.clientX),
+        shouldResumeAfterSeek
+      );
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+  };
+
+  const handleProgressKeyDown = (
+    event: React.KeyboardEvent<HTMLDivElement>
+  ) => {
+    if (!lyricWords.length || isLoading) return;
+
+    const step = event.shiftKey ? 20 : 5;
+    const shouldResumeAfterSeek = isPlaying;
+
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      seekToWordIndex(currentWordIndex - step, shouldResumeAfterSeek);
+    }
+
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      seekToWordIndex(currentWordIndex + step, shouldResumeAfterSeek);
+    }
+
+    if (event.key === "Home") {
+      event.preventDefault();
+      seekToWordIndex(0, shouldResumeAfterSeek);
+    }
+
+    if (event.key === "End") {
+      event.preventDefault();
+      seekToWordIndex(lyricWords.length - 1, shouldResumeAfterSeek);
+    }
+  };
+
   return (
     <div className="relative mx-auto max-w-[1180px] pb-28 sm:pb-32">
       <header className="mb-5 flex flex-col gap-4 lg:mb-6 lg:flex-row lg:items-end lg:justify-between">
@@ -2216,12 +2322,33 @@ function SkimSyncView({
                     <span>{progress}%</span>
                   </div>
 
-                  <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                  <div
+                    ref={progressBarRef}
+                    role="slider"
+                    tabIndex={0}
+                    aria-label="Seek summary progress"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={progress}
+                    onPointerDown={handleProgressPointerDown}
+                    onKeyDown={handleProgressKeyDown}
+                    className="relative h-5 cursor-pointer touch-none rounded-full py-1 outline-none focus-visible:ring-2 focus-visible:ring-[#5A22C3]/30"
+                  >
+                    <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                      <motion.div
+                        className="h-full rounded-full bg-[#5A22C3]"
+                        initial={{ width: "0%" }}
+                        animate={{ width: `${progress}%` }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                      />
+                    </div>
+
                     <motion.div
-                      className="h-full rounded-full bg-[#5A22C3]"
-                      initial={{ width: "0%" }}
-                      animate={{ width: `${progress}%` }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-white bg-[#5A22C3] shadow-md"
+                      animate={{
+                        left: `calc(${progress}% - 8px)`,
+                      }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
                     />
                   </div>
                 </div>
