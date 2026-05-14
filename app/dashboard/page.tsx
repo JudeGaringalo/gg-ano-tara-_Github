@@ -71,6 +71,7 @@ const ACCEPTED_UPLOAD_TYPES =
   ".pdf,.docx,.xlsx,.xls,.txt,image/jpeg,image/jpg,image/png,image/webp";
 
 const IMAGE_FORMATS = ["JPG", "JPEG", "PNG", "WEBP"];
+const LONG_DOCUMENT_WORD_LIMIT = 50;
 
 function getFileExtension(file: File) {
   const fileNameExt = file.name.split(".").pop()?.toLowerCase();
@@ -278,6 +279,7 @@ export default function Dashboard() {
         accepted: false,
         reason:
           "This image could not be validated because the file path is missing.",
+        wordCount: 0,
       };
     }
 
@@ -299,6 +301,7 @@ export default function Dashboard() {
           accepted: false,
           reason:
             "This image could not be validated. Please upload a clearer page, notes, slide, worksheet, screenshot, or document.",
+          wordCount: 0,
         };
       }
 
@@ -310,12 +313,20 @@ export default function Dashboard() {
           reason:
             data.rejectionReason ||
             "This image has too little readable text. Please upload a clearer page, notes, slide, worksheet, screenshot, or document.",
+          wordCount:
+            typeof data.readableWordCount === "number"
+              ? data.readableWordCount
+              : 0,
         };
       }
 
       return {
         accepted: true,
         reason: "",
+        wordCount:
+          typeof data.readableWordCount === "number"
+            ? data.readableWordCount
+            : 0,
       };
     } catch (error) {
       console.error("Image validation failed:", error);
@@ -324,6 +335,7 @@ export default function Dashboard() {
         accepted: false,
         reason:
           "This image could not be validated. Please upload notes, slides, textbook pages, worksheets, diagrams, or documents instead.",
+        wordCount: 0,
       };
     }
   };
@@ -485,6 +497,18 @@ export default function Dashboard() {
           }
 
           validFiles.push(file);
+
+          if (typeof validation.wordCount === "number") {
+            totalWordCount += validation.wordCount;
+
+            if (validation.wordCount > LONG_DOCUMENT_WORD_LIMIT) {
+              longFiles.push({
+                name: file.name,
+                wordCount: validation.wordCount,
+              });
+            }
+          }
+
           continue;
         }
 
@@ -526,7 +550,10 @@ export default function Dashboard() {
         if (typeof data.wordCount === "number") {
           totalWordCount += data.wordCount;
 
-          if (data.wordCount > 500) {
+          if (
+            data.requiresConfirmation === true ||
+            data.wordCount > LONG_DOCUMENT_WORD_LIMIT
+          ) {
             longFiles.push({
               name: file.name,
               wordCount: data.wordCount,
@@ -540,7 +567,7 @@ export default function Dashboard() {
         return;
       }
 
-      if (totalWordCount > 500 || longFiles.length > 0) {
+      if (totalWordCount > LONG_DOCUMENT_WORD_LIMIT || longFiles.length > 0) {
         setLongDocumentWarning({
           files: validFiles,
           totalWordCount,
@@ -1323,7 +1350,7 @@ function LongDocumentWarningModal({
             </p>
 
             <p className="mt-1 text-xs text-gray-500">
-              Echo recommends extra confirmation for documents over 500 words.
+              Echo recommends extra confirmation for uploads over 50 readable words.
             </p>
           </div>
         )}
