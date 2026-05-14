@@ -1456,6 +1456,15 @@ function SkimSyncView({
   const utteranceBaseCharIndexRef = useRef(0);
   const playbackStartWordIndexRef = useRef(0);
   const ignoreNextSpeechEndRef = useRef(false);
+  const speechChunksRef = useRef<
+    {
+      text: string;
+      startChar: number;
+      startWordIndex: number;
+    }[]
+  >([]);
+  const activeSpeechChunkIndexRef = useRef(0);
+  const shouldContinueSpeechRef = useRef(false);
 
   const displayTitle =
     files.length > 1
@@ -1502,6 +1511,9 @@ function SkimSyncView({
     utteranceBaseCharIndexRef.current = 0;
     playbackStartWordIndexRef.current = 0;
     ignoreNextSpeechEndRef.current = false;
+    speechChunksRef.current = [];
+    activeSpeechChunkIndexRef.current = 0;
+    shouldContinueSpeechRef.current = false;
     setCurrentCharIndex(0);
   };
 
@@ -1563,6 +1575,7 @@ function SkimSyncView({
     }
 
     return () => {
+      shouldContinueSpeechRef.current = false;
       stopFallbackTimer();
       window.speechSynthesis.cancel();
     };
@@ -1570,6 +1583,7 @@ function SkimSyncView({
 
   useEffect(() => {
     return () => {
+      shouldContinueSpeechRef.current = false;
       stopFallbackTimer();
       window.speechSynthesis.cancel();
     };
@@ -1633,6 +1647,78 @@ function SkimSyncView({
         )
       : 0;
 
+  const findWordIndexAtOrAfterChar = (charIndex: number) => {
+    if (!lyricWords.length) return 0;
+
+    const foundIndex = lyricWords.findIndex((word) => word.start >= charIndex);
+
+    if (foundIndex !== -1) return foundIndex;
+
+    return lyricWords.length - 1;
+  };
+
+  const buildSpeechChunks = (startWordIndex: number) => {
+    if (!aiScript || !lyricWords.length) return [];
+
+    const safeStartWordIndex = Math.min(
+      Math.max(startWordIndex, 0),
+      lyricWords.length - 1
+    );
+
+    const startChar = lyricWords[safeStartWordIndex]?.start ?? 0;
+    const remainingScript = aiScript.slice(startChar);
+    const maxChunkLength = 850;
+
+    const chunks: {
+      text: string;
+      startChar: number;
+      startWordIndex: number;
+    }[] = [];
+
+    let cursor = 0;
+
+    while (cursor < remainingScript.length) {
+      const remaining = remainingScript.slice(cursor);
+
+      if (!remaining.trim()) break;
+
+      let chunkLength = Math.min(maxChunkLength, remaining.length);
+
+      if (remaining.length > maxChunkLength) {
+        const preferredBreaks = [
+          remaining.lastIndexOf(". ", maxChunkLength),
+          remaining.lastIndexOf("? ", maxChunkLength),
+          remaining.lastIndexOf("! ", maxChunkLength),
+          remaining.lastIndexOf("; ", maxChunkLength),
+          remaining.lastIndexOf(", ", maxChunkLength),
+          remaining.lastIndexOf(" ", maxChunkLength),
+        ].filter((index) => index > 180);
+
+        if (preferredBreaks.length > 0) {
+          chunkLength = Math.max(...preferredBreaks) + 1;
+        }
+      }
+
+      const rawChunk = remaining.slice(0, chunkLength);
+      const leadingSpaces = rawChunk.length - rawChunk.trimStart().length;
+      const chunkText = rawChunk.trim();
+
+      if (chunkText) {
+        const chunkStartChar = startChar + cursor + leadingSpaces;
+
+        chunks.push({
+          text: chunkText,
+          startChar: chunkStartChar,
+          startWordIndex: findWordIndexAtOrAfterChar(chunkStartChar),
+        });
+      }
+
+      cursor += chunkLength;
+    }
+
+    return chunks;
+  };
+
   const startFallbackTimer = (startWordIndex = 0) => {
     stopFallbackTimer();
 
@@ -1695,6 +1781,7 @@ function SkimSyncView({
     trackerIsActiveRef.current = false;
     trackerIsPausedRef.current = true;
     ignoreNextSpeechEndRef.current = true;
+    shouldContinueSpeechRef.current = false;
     stopFallbackTimer();
 
     if (pausedWord) {
@@ -1705,32 +1792,30 @@ function SkimSyncView({
     setIsPlaying(false);
   };
 
-  const handlePlayFromWord = (startWordIndex = 0) => {
-    if (!aiScript || !lyricWords.length) return;
+  const speakSpeechChunk = (chunkIndex: number) => {
+    const chunk = speechChunksRef.current[chunkIndex];
 
-    const safeStartWordIndex = Math.min(
-      Math.max(startWordIndex, 0),
-      lyricWords.length - 1
-    );
+    if (!chunk || !shouldContinueSpeechRef.current) {
+      trackerIsActiveRef.current = false;
+      trackerIsPausedRef.current = false;
+      shouldContinueSpeechRef.current = false;
+      stopFallbackTimer();
+      setIsPlaying(false);
+      setCurrentCharIndex(aiScript.length);
+      return;
+    }
 
-    const startWord = lyricWords[safeStartWordIndex];
-    const baseCharIndex = startWord?.start ?? 0;
-    const remainingScript = aiScript.slice(baseCharIndex);
-
-    window.speechSynthesis.cancel();
-
-    stopFallbackTimer();
-
-    utteranceBaseCharIndexRef.current = baseCharIndex;
-    playbackStartWordIndexRef.current = safeStartWordIndex;
+    activeSpeechChunkIndexRef.current = chunkIndex;
+    utteranceBaseCharIndexRef.current = chunk.startChar;
+    playbackStartWordIndexRef.current = chunk.startWordIndex;
     lastBoundaryAtRef.current = 0;
-    trackerIsActiveRef.current = true;
-    trackerIsPausedRef.current = false;
-    ignoreNextSpeechEndRef.current = false;
+    speechStartedAtRef.current = Date.now();
+    pausedAtRef.current = null;
+    totalPausedTimeRef.current = 0;
 
-    setCurrentCharIndex(baseCharIndex);
+    setCurrentCharIndex(chunk.startChar);
 
-    const utterance = new SpeechSynthesisUtterance(remainingScript);
+    const utterance = new SpeechSynthesisUtterance(chunk.text);
 
     utterance.rate = 1;
     utterance.pitch = 1;
@@ -1754,8 +1839,26 @@ function SkimSyncView({
         return;
       }
 
+      if (!shouldContinueSpeechRef.current) {
+        trackerIsActiveRef.current = false;
+        trackerIsPausedRef.current = false;
+        stopFallbackTimer();
+        setIsPlaying(false);
+        return;
+      }
+
+      const nextChunkIndex = activeSpeechChunkIndexRef.current + 1;
+
+      if (nextChunkIndex < speechChunksRef.current.length) {
+        window.setTimeout(() => {
+          speakSpeechChunk(nextChunkIndex);
+        }, 80);
+        return;
+      }
+
       trackerIsActiveRef.current = false;
       trackerIsPausedRef.current = false;
+      shouldContinueSpeechRef.current = false;
       stopFallbackTimer();
       setIsPlaying(false);
       setCurrentCharIndex(aiScript.length);
@@ -1767,17 +1870,60 @@ function SkimSyncView({
         return;
       }
 
-      console.error("Speech synthesis error:", event);
+      console.error("Speech synthesis chunk error:", event);
+
+      const nextChunkIndex = activeSpeechChunkIndexRef.current + 1;
+
+      if (shouldContinueSpeechRef.current && nextChunkIndex < speechChunksRef.current.length) {
+        window.setTimeout(() => {
+          speakSpeechChunk(nextChunkIndex);
+        }, 120);
+        return;
+      }
+
       trackerIsActiveRef.current = false;
       trackerIsPausedRef.current = false;
+      shouldContinueSpeechRef.current = false;
       stopFallbackTimer();
       setIsPlaying(false);
     };
 
     utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handlePlayFromWord = (startWordIndex = 0) => {
+    if (!aiScript || !lyricWords.length) return;
+
+    const safeStartWordIndex = Math.min(
+      Math.max(startWordIndex, 0),
+      lyricWords.length - 1
+    );
+
+    const startWord = lyricWords[safeStartWordIndex];
+    const baseCharIndex = startWord?.start ?? 0;
+
+    window.speechSynthesis.cancel();
+    stopFallbackTimer();
+
+    speechChunksRef.current = buildSpeechChunks(safeStartWordIndex);
+    activeSpeechChunkIndexRef.current = 0;
+    shouldContinueSpeechRef.current = true;
+    utteranceBaseCharIndexRef.current = baseCharIndex;
+    playbackStartWordIndexRef.current = safeStartWordIndex;
+    lastBoundaryAtRef.current = 0;
+    trackerIsActiveRef.current = true;
+    trackerIsPausedRef.current = false;
+    ignoreNextSpeechEndRef.current = false;
+
+    setCurrentCharIndex(baseCharIndex);
+
     startFallbackTimer(safeStartWordIndex);
     setIsPlaying(true);
-    window.speechSynthesis.speak(utterance);
+
+    window.setTimeout(() => {
+      speakSpeechChunk(0);
+    }, 80);
   };
 
   const togglePlay = () => {
